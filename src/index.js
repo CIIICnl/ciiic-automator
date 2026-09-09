@@ -8,6 +8,7 @@ import { createEvent, createContentItem, createInboxItem, addComment, testConnec
 import { sendEventConfirmation, sendNewsletterItemConfirmation, sendErrorNotification, sendDraftResumeEmail, testConnection as testBrevo } from './services/brevo.js';
 import { processRegistration, processStatusChange, processCheckin, verifySignature, isWebhookSecretConfigured } from './services/jaarevent.js';
 import { processSxswSubmission } from './services/sxsw.js';
+import { processNewsletterOptin } from './services/newsletter-optin.js';
 import { initDraftsDb, saveDraft, getDraft, deleteDraft, purgeExpired, healthCheck as draftsHealth } from './services/drafts.js';
 import { createTicket, testConnection as testIntake, TICKET_TYPES, TICKET_SYSTEMS, TICKET_PRIORITIES } from './services/intake.js';
 import { runRadarScan, startRadarScheduler, radarHealth } from './services/radar/index.js';
@@ -890,6 +891,23 @@ app.post('/webhook/sxsw-newsletter', async (req, res) => {
     res.json({ success: true, ...result });
   } catch (err) {
     console.error('❌ SXSW error:', err.message);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+/**
+ * Generic newsletter opt-in webhook: list + field mapping live in the
+ * feed URL's query string (see services/newsletter-optin.js).
+ * First user: Form 43, "Save the Date: opening IX Labs" → IX Labs signups.
+ */
+app.post('/webhook/newsletter-optin', async (req, res) => {
+  console.log('📝 Received newsletter opt-in webhook');
+  try {
+    const result = await processNewsletterOptin(req.query, req.body);
+    console.log('✅ Newsletter opt-in processed:', JSON.stringify(result));
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('❌ Newsletter opt-in error:', err.message);
     res.status(400).json({ error: err.message });
   }
 });
