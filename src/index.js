@@ -6,7 +6,7 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { parseEventFromEmail, parseNewsletterItemFromEmail, parseInboxItemFromEmail, extractUrls, fetchUrlContent } from './services/openai.js';
 import { createEvent, createContentItem, createInboxItem, addComment, testConnection as testNotion } from './services/notion.js';
 import { sendEventConfirmation, sendNewsletterItemConfirmation, sendErrorNotification, sendDraftResumeEmail, testConnection as testBrevo } from './services/brevo.js';
-import { processRegistration, processStatusChange, processCheckin, verifySignature } from './services/jaarevent.js';
+import { processRegistration, processStatusChange, processCheckin, verifySignature, isWebhookSecretConfigured } from './services/jaarevent.js';
 import { processSxswSubmission } from './services/sxsw.js';
 import { initDraftsDb, saveDraft, getDraft, deleteDraft, purgeExpired, healthCheck as draftsHealth } from './services/drafts.js';
 import { createTicket, testConnection as testIntake, TICKET_TYPES, TICKET_SYSTEMS, TICKET_PRIORITIES } from './services/intake.js';
@@ -18,8 +18,13 @@ const PORT = process.env.PORT || 3000;
 // Behind Caddy — trust one hop so req.ip reflects the real client
 app.set('trust proxy', 1);
 
-// Parse JSON and URL-encoded bodies
-app.use(express.json({ limit: '10mb' }));
+// Parse JSON and URL-encoded bodies.
+// Keep the raw bytes around: HMAC-signed webhooks must be verified against the
+// literal body the sender signed, not a re-serialised version of req.body.
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, _res, buf) => { req.rawBody = buf; },
+}));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Health check endpoint
@@ -848,11 +853,19 @@ app.post('/webhook/registration', async (req, res) => {
 app.post('/webhook/registration-status', async (req, res) => {
   console.log('🔄 Received registration status change');
 
-  // Verify signature if configured
+  // This endpoint can flip someone's registration to cancelled, so it is
+  // signature-only: no valid X-Webhook-Signature, no processing.
+  if (!isWebhookSecretConfigured()) {
+    console.error('❌ JAAREVENT_WEBHOOK_SECRET is not set — refusing registration-status webhooks');
+    return res.status(503).json({ error: 'Webhook verification not configured' });
+  }
+
   const signature = req.headers['x-webhook-signature'];
-  if (process.env.JAAREVENT_WEBHOOK_SECRET && !verifySignature(JSON.stringify(req.body), signature)) {
-    console.error('❌ Invalid webhook signature');
-    return res.status(401).json({ error: 'Invalid signature' });
+  if (!verifySignature(req.rawBody, signature)) {
+    console.error(
+      `❌ Rejected registration-status webhook: ${signature ? 'invalid' : 'missing'} X-Webhook-Signature (ip=${req.ip})`
+    );
+    return res.status(403).json({ error: 'Invalid signature' });
   }
 
   try {

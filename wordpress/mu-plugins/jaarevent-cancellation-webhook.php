@@ -4,7 +4,14 @@
  * Description: Sends a webhook to bot.ciiic.nl when a Gravity Forms registration status changes (e.g. cancelled).
  * Version: 1.0.0
  * 
- * Install: Copy to wp-content/mu-plugins/ on forms.ciiic.nl
+ * SUPERSEDED (2026-09-09). The live plugin now lives in the forms repo as
+ * mu-plugins/jaarevent-sync.php, which sends a richer payload (entry_id, email,
+ * status, old_status, first_name, last_name, form_id) and always signs it.
+ * This copy sends a three-field payload and only signs when a secret happens to
+ * be defined; the relay rejects unsigned calls with 403 since that date, so
+ * deploying this file would break the sync. Kept for reference only - do not
+ * install it on forms.ciiic.nl.
+ *
  * 
  * Requires: Gravity Forms with GravityView Entry Approval or custom cancel link
  * that updates entry meta 'registration_status' to 'cancelled'.
