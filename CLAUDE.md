@@ -55,6 +55,25 @@ See Jaap's global `~/.claude/CLAUDE.md` for the SDK v5 / 2025-09-03
 value map (checkbox `__YES__`/`__NO__`, relation as JSON URL array,
 etc.). All writes from this bot must use that format.
 
+## Jaarevent webhook signature
+
+`POST /webhook/registration-status` can flip someone's registration to
+cancelled, so it is **signature-only**: the request must carry an
+`X-Webhook-Signature` header holding
+`hash_hmac('sha256', <raw request body>, JAAREVENT_WEBHOOK_SECRET)` in
+lowercase hex. No header, a malformed one, or one that does not match the raw
+body: `403`. `JAAREVENT_WEBHOOK_SECRET` missing from the environment: `503`
+(the endpoint never falls back to accepting unsigned calls).
+
+Verification runs on the **raw body bytes** (`req.rawBody`, captured by the
+`express.json({ verify })` hook), not on a re-serialised `req.body` - key order
+and whitespace from the sender must survive.
+
+The other side is the forms repo, `mu-plugins/jaarevent-sync.php`; the shared
+value lives in 1Password ("CIIIC forms wp-config secrets", vault CIIIC) and in
+the Coolify env of the `relaybot` app. Rotating it means changing both sides in
+the same window.
+
 ## Email routing
 
 | Address | Type | Notion DB |

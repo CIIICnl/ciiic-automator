@@ -22,12 +22,35 @@ const NOTION_CONTACTEN_DS_IDS = (process.env.NOTION_CONTACTEN_DS_IDS || '20811fb
 const WEBHOOK_SECRET = process.env.JAAREVENT_WEBHOOK_SECRET;
 
 /**
- * Verify webhook signature from the mu-plugin
+ * Whether the shared HMAC secret is configured.
+ * Callers use this to fail loudly on a misconfigured deploy instead of
+ * silently accepting unsigned webhooks.
+ */
+export function isWebhookSecretConfigured() {
+  return Boolean(WEBHOOK_SECRET);
+}
+
+/**
+ * Verify the X-Webhook-Signature header sent by the forms mu-plugin.
+ *
+ * forms signs the *literal* request body:
+ *   hash_hmac('sha256', $payload_json, $secret)  -> lowercase hex
+ * so `payload` must be the raw body bytes, never a re-serialised
+ * JSON.stringify(req.body) — key order and spacing would differ.
+ *
+ * Fails closed: no secret, no header, or a malformed header all return false.
  */
 export function verifySignature(payload, signature) {
-  if (!WEBHOOK_SECRET) return true; // skip if no secret configured
+  if (!WEBHOOK_SECRET) return false;
+  if (typeof signature !== 'string') return false;
+  if (payload === undefined || payload === null || payload.length === 0) return false;
+
+  const provided = signature.trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(provided)) return false;
+
   const expected = crypto.createHmac('sha256', WEBHOOK_SECRET).update(payload).digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(signature || ''), Buffer.from(expected));
+  // Both are now known to be 32 bytes, so timingSafeEqual cannot throw.
+  return crypto.timingSafeEqual(Buffer.from(provided, 'hex'), Buffer.from(expected, 'hex'));
 }
 
 /**
