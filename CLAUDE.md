@@ -90,3 +90,16 @@ If the routing table changes, update both here and
 Feature work happens **from this directory**. `jaap-work` is the
 cross-system debugging workspace (has all credentials and docs in one
 place) but shouldn't hold production code.
+
+## Werkwijze
+
+Deze repo volgt de universele werkwijze (skill `werkwijze` in `~/.claude`):
+
+- **Nu**: `docs/plans/TODO.md` — claimbord + open werk, budget < 300 regels (kleine repo).
+- **Briefs**: `docs/plans/briefs/<slug>.md`; uitgevoerd → `docs/plans/done/`.
+- **Naslag**: `docs/reference/` beschrijft wat ís (bron-recon Radar); `docs/plans/` beschrijft wat verandert. Applicatie-achtergrond staat in de CIIIC-KB, zie de tabel hierboven.
+- **Handoff**: `/handoff` leest `docs/plans/HANDOFF.md`; elke werk-afrondende sessie overschrijft 'm en sluit af met de sluitregel.
+- **Rollen**: Fable brieft en beslist; Opus voert één brief per sessie uit en merget nooit de eigen PR. Welk model een review-en-merge-sessie krijgt volgt uit `werkwijze` § Modelkeuze per sessie — niet hier vastleggen.
+- **Ritmes**: `merge-housekeeping` per gedelegeerde merge; `reorg-audit` bij de drift-drempel (ledger: `docs/plans/_reconcile/drift-log.md`); `tighten-scan` op aanvraag.
+
+Afwijkingen van de universele werkwijze: geen. De repo is publiek, dus de OSS-optie "plans in een private planning-sibling" stond open; er is bewust voor in-repo gekozen (zie `docs/plans/done/decisions.md`, 2026-09-10).
