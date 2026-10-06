@@ -227,7 +227,7 @@ endpoint; see `.env.example` for the optional tuning knobs. `/health` reports
 
 ## CIIIC newsletter consent preparation
 
-CIIIC signup routes share a DOI adapter and encrypted suppression registry. Event status and IX Labs remain separate. Configuration, signed Forms feeds, read-only migration/reconciliation commands, and production gates are documented in [the consent runbook](docs/reference/ciiic-consent-preparation.md). This preparation does not authorize a provider cutover, import, or campaign send.
+CIIIC signup routes share a DOI adapter and encrypted suppression registry. Event status and IX Labs remain separate. Configuration, signed Forms feeds, read-only migration/reconciliation commands, and production gates are documented in [the consent runbook](docs/reference/ciiic-consent-preparation.md). The consent route is off by default: only `CIIIC_CONSENT_ROUTE=enabled` activates it; unset, all signup routes keep their pre-consent Mailchimp behaviour. This preparation does not authorize a provider cutover, import, or campaign send.
 
 Run the synthetic regression suite with `npm test`. It does not contact live providers.
 

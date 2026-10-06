@@ -85,9 +85,9 @@ test('checkbox subfields and raw CIIIC list id use the protected route', () => {
 test('SXSW calls the shared adapter only for trusted opt-in and passes explicit language', async () => {
   const calls = [];
   const submission = { form_id: 26, '1': 'Ada', '2': 'Lovelace', '5': 'ada@example.test', '9.1': 'Yes', newsletter_language: 'en' };
-  await assert.rejects(processSxswSubmission(submission, { subscribe: input => calls.push(input) }), /Unauthenticated/);
+  await assert.rejects(processSxswSubmission(submission, { consentRoute: true, subscribe: input => calls.push(input) }), /Unauthenticated/);
   assert.equal(calls.length, 0);
-  const result = await processSxswSubmission(submission, { authenticated: true, subscribe: async input => { calls.push(input); return { status: 'pending', provider: 'mailchimp' }; } });
+  const result = await processSxswSubmission(submission, { consentRoute: true, authenticated: true, subscribe: async input => { calls.push(input); return { status: 'pending', provider: 'mailchimp' }; } });
   assert.equal(result.status, 'pending');
   assert.deepEqual(calls[0].consentEvidence, { kind: 'gravity-forms', signed: true, formId: '26', fieldId: '9', entryId: undefined });
   assert.equal(calls[0].language, 'en');
@@ -95,10 +95,10 @@ test('SXSW calls the shared adapter only for trusted opt-in and passes explicit 
 
 test('generic CIIIC signup requires a mapped opt-in; IX Labs remains separate', async () => {
   const payload = { form_id: 27, '6': 'reader@example.test', '11.1': 'Yes', newsletter_language: 'en' };
-  await assert.rejects(processNewsletterOptin({ list: 'ciiic', email: '6', optin: '11' }, payload), /Unauthenticated/);
-  await assert.rejects(processNewsletterOptin({ list: 'ciiic', email: '6' }, payload, { authenticated: true }), /opt-in field is required/);
+  await assert.rejects(processNewsletterOptin({ list: 'ciiic', email: '6', optin: '11' }, payload, { consentRoute: true }), /Unauthenticated/);
+  await assert.rejects(processNewsletterOptin({ list: 'ciiic', email: '6' }, payload, { consentRoute: true, authenticated: true }), /opt-in field is required/);
   let called = false;
-  const result = await processNewsletterOptin({ list: '67fe159b9d', email: '6', optin: '11' }, payload, { authenticated: true, subscribeCiiic: async input => { called = true; assert.equal(input.language, 'en'); return { status: 'pending', provider: 'mailchimp' }; } });
+  const result = await processNewsletterOptin({ list: '67fe159b9d', email: '6', optin: '11' }, payload, { consentRoute: true, authenticated: true, subscribeCiiic: async input => { called = true; assert.equal(input.language, 'en'); return { status: 'pending', provider: 'mailchimp' }; } });
   assert.equal(result.status, 'pending');
   assert.equal(called, true);
   assert.equal(targetsCiiicAudience({ list: 'ixlabs' }), false);
@@ -107,6 +107,7 @@ test('generic CIIIC signup requires a mapped opt-in; IX Labs remains separate', 
 test('Jaarevent without opt-in only changes event status; opt-in failure stays visible', async () => {
   const calls = [];
   const dependencies = {
+    consentRoute: true,
     updateEvent: async (_email, status) => { calls.push(['event', status]); return { skipped: true }; },
     updateNotion: async (_email, status) => { calls.push(['notion', status]); return { status }; },
     subscribe: async input => { calls.push(['subscribe', input.language]); throw new Error('synthetic provider timeout'); },

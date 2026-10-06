@@ -23,6 +23,7 @@
 import https from 'https';
 import crypto from 'crypto';
 import { requestCiiicSubscription } from './consent/subscriber.js';
+import { consentRouteEnabled } from './consent/activation.js';
 
 const MAILCHIMP_API_KEY = process.env.MAILCHIMP_API_KEY;
 const MAILCHIMP_DC = process.env.MAILCHIMP_DC || 'us11';
@@ -86,18 +87,22 @@ export function resolveList(alias) {
   return null;
 }
 
+export function ciiicList() {
+  return { alias: 'ciiic', ...LISTS.ciiic };
+}
+
 export function targetsCiiicAudience(query) {
   return resolveList(query?.list)?.id.toLowerCase() === LISTS.ciiic.id.toLowerCase();
 }
 
-async function subscribe({ list, email, firstName, lastName, organisation, tag }) {
+export async function subscribeMailchimp({ list, email, firstName, lastName, organisation, tag }, { request = apiRequest } = {}) {
   const auth = Buffer.from(`anystring:${MAILCHIMP_API_KEY}`).toString('base64');
   const emailHash = crypto.createHash('md5').update(email.toLowerCase().trim()).digest('hex');
   const merge_fields = { FNAME: firstName || '', LNAME: lastName || '' };
   if (organisation && list.orgMergeTag) merge_fields[list.orgMergeTag] = organisation;
 
   // PUT upserts: existing members keep their status, new ones subscribe.
-  const result = await apiRequest(
+  const result = await request(
     `https://${MAILCHIMP_DC}.api.mailchimp.com/3.0/lists/${list.id}/members/${emailHash}`,
     {
       method: 'PUT',
@@ -119,7 +124,7 @@ async function subscribe({ list, email, firstName, lastName, organisation, tag }
 /**
  * Process one webhook call. `query` = parsed URL query, `body` = GF payload.
  */
-export async function processNewsletterOptin(query, body, { authenticated = false, subscribeCiiic = requestCiiicSubscription } = {}) {
+export async function processNewsletterOptin(query, body, { authenticated = false, consentRoute = consentRouteEnabled(), subscribeCiiic = requestCiiicSubscription, subscribeLegacy = subscribeMailchimp } = {}) {
   const list = resolveList(query.list);
   if (!list) throw new Error(`Unknown or missing list: ${query.list || '(none)'}`);
   if (!query.email) throw new Error('Missing email field id (?email=)');
@@ -138,7 +143,7 @@ export async function processNewsletterOptin(query, body, { authenticated = fals
 
   if (!optedIn) return { skipped: true, reason: 'no_optin' };
 
-  if (targetsCiiicAudience(query)) {
+  if (consentRoute && targetsCiiicAudience(query)) {
     if (!authenticated) throw new Error('Unauthenticated CIIIC opt-in');
     if (!query.optin) throw new Error('CIIIC opt-in field is required');
     return subscribeCiiic({
@@ -148,7 +153,7 @@ export async function processNewsletterOptin(query, body, { authenticated = fals
     });
   }
 
-  const mc = await subscribe({ list, email, firstName, lastName, organisation, tag });
+  const mc = await subscribeLegacy({ list, email, firstName, lastName, organisation, tag });
   console.log(`Mailchimp ${list.alias} opt-in completed with status ${mc.status}`);
   return { subscribed: true, email, list: list.alias, tag, mailchimp_status: mc.status };
 }

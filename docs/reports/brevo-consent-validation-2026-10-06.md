@@ -37,11 +37,25 @@ De eerdere review op `f4e89d9` bleef terecht geblokkeerd ondanks 32 groene tests
 
 Deze uitkomsten zijn uitvoeringsbewijs en vragen nog een onafhankelijke flagship-review. De oorspronkelijke review blijft als historisch rapport behouden. Geen productiegegevens of configuratie gelezen of gewijzigd in deze herstelronde.
 
+## Herstel van reviewbevinding R3
+
+Review R3 (`714d982`) blokkeerde merge: de route eiste direct het signinggeheim, en de live Form43-feed7 post ongetekend naar `list=ciiic`. Herstel: activatieschakelaar `CIIIC_CONSENT_ROUTE`, standaard uit. Zonder de exacte waarde `enabled` draaien newsletter-optin, SXSW en registration het gedrag van vóór deze PR; de getekende consentroute heeft geen unsigned fallback.
+
+| Criterium R3 | Bewijs in `tests/route-activation.test.js` (echte `app` uit `src/index.js`, uitgaand HTTPS vervangen door recorder) |
+|---|---|
+| Live configuratievorm, veld5 aangevinkt | Ongetekende POST op het exacte feed7-pad → 200, één Mailchimp-PUT op `67fe159b9d` met `status_if_new: subscribed`, tag `ixlabs-opening-2026`, organisatie in `MMERGE6` |
+| Live configuratievorm, veld5 leeg | 200 `no_optin`, geen uitgaand verkeer |
+| Overige routes in default | SXSW form26 → PUT op CIIIC met bronlabel; registration met veld19 → PATCH, bij 404 POST op `0e404ef800`; zonder veld19 alleen PATCH |
+| Nieuwe route expliciet aan | Zonder secret 503 (ook leeg veld), zonder of met foute handtekening 403, getekend leeg veld 200 zonder providercall, getekende opt-in zonder registersleutels 503 en geen legacy-PUT |
+| Schakelaar strikt | `true`, `1`, `Enabled`, `on`, leeg → uit |
+
+`npm test`: 46 geslaagd, 0 gefaald (42 bestaande plus 4 nieuwe; de bestaande consenttests geven nu expliciet `consentRoute: true` mee). Entrypoint-rooktest: `node src/index.js` start en beantwoordt `GET /` met 200; `app.listen` en de opstartjobs draaien alleen als `index.js` het entrypoint is, zodat tests de app zonder bijwerkingen laden. Geen productieconfiguratie gelezen of gewijzigd in deze ronde; de live feed-/env-hercontrole hoort bij de review vóór merge.
+
 ## Grenzen en productiepoorten
 
 - Geen bulkimport, echte DOI-mail, campagneverzending, accountconfiguratie, cutover of deploy uitgevoerd. Geen persoonsgegevens/exportbestanden in git of testlogs.
 - Authentieke DOI-bevestiging is nog niet automatisch aan het register gekoppeld. Lokale pending-toestemming blijft daarom niet-verzendbaar; de reviewer moet deze productiepoort expliciet overdragen.
-- Nieuwe register-/signingconfiguratie is nodig voor CIIIC-opt-ins. Zonder configuratie faalt de route gesloten; merge triggert hier automatisch deploy. De reviewer beoordeelt activering en consumers vóór merge.
+- De consentroute activeert alleen met `CIIIC_CONSENT_ROUTE=enabled`. Daarvoor zijn register-/signingconfiguratie en een getekende Forms-feed nodig; zonder configuratie faalt de aangezette route gesloten. Merge triggert automatisch deploy en laat bij ongezette schakelaar het huidige gedrag staan.
 - De reconciliation-runner is gebouwd maar niet ingepland. De nieuwsbriefapp gebruikt de editieboekhouding nog niet. Concrete consumercontracten worden via meta-briefings doorgegeven.
 - Baseline-import is ontworpen en voorzien van read-backvergelijking; er is geen uitvoerbare providerimport. Dat vraagt afzonderlijk mandaat, gecontroleerd consentbewijs, uitgeschakelde automations en een nieuw gecontroleerd diff.
 

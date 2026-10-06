@@ -2,9 +2,22 @@
 
 Status: implementatievoorstel voor afzonderlijke flagship-review. Geen productieconfiguratie, import, verzending of cutover uitgevoerd. Contract: [goedgekeurd hubplan](https://github.com/CIIICnl/jaap-work/blob/48e729a3ca5b4d9e68a3eba2c31509733bd1fd2d/docs/plans/briefs/brevo-migratie-taalvoorkeur-2026-10-06.md), secties 2–6. Testen: `npm test`; CI gebruikt Node 20 (Docker-runtime) en 22.
 
+## Activatieschakelaar en defaultgedrag
+
+De consentroute staat **standaard uit**. Alleen `CIIIC_CONSENT_ROUTE=enabled` (exact deze waarde; `true`, `1`, `on` of hoofdletters tellen niet) zet hem aan; de check staat in `src/services/consent/activation.js`. Merge en deploy van deze code veranderen daardoor niets aan de live aanmeldroutes.
+
+| Route | Zonder `CIIIC_CONSENT_ROUTE=enabled` (default, = huidige productie) | Met `CIIIC_CONSENT_ROUTE=enabled` |
+|---|---|---|
+| `/webhook/newsletter-optin?list=ciiic` (live: Form43/feed7) | Ongetekend toegestaan; aangevinkt opt-in-veld → Mailchimp-PUT op `67fe159b9d`, `status_if_new: subscribed`, tag uit `tag=`; leeg veld → 200 `no_optin`, geen providercall | Handtekening verplicht, ook bij leeg veld; zonder `CIIIC_OPTIN_WEBHOOK_SECRET` 503, foute handtekening 403; getekende opt-in vereist register- en providerconfiguratie, anders 503 |
+| `/webhook/sxsw-newsletter` (form26/27, inactief) | Ongetekend; aangevinkt → Mailchimp-PUT op CIIIC met bronlabel | Handtekening bij aangevinkte opt-in; DOI-adapter |
+| `/webhook/registration` (form13, inactief) | Ongetekend; eventstatus-PATCH, bij 404 én aangevinkt veld19 eventlid toevoegen op `0e404ef800` (gedrag van vóór deze PR) | Handtekening bij aangevinkt veld19; eventstatus alleen PATCH; nieuwsbrief via DOI-adapter |
+| `/webhook/marketing/brevo` | Gemount, faalt gesloten zonder `BREVO_MARKETING_WEBHOOK_TOKEN`; geen bestaand verkeer | Idem |
+
+Er is geen unsigned fallback binnen de aangezette route: met de schakelaar aan gaat een CIIIC-gebonden call nooit terug naar het oude Mailchimp-pad. De schakelaar omzetten is TODO5-activatiewerk met eigen mandaat (getekende Forms-feed, duurzaam register, DOI-bevestiging, reconciliation vóór T0); niet vanuit een deploy. Bewijs: `tests/route-activation.test.js` draait de echte `app` uit `src/index.js` met de live Form43-feedvorm, aangevinkt en leeg veld5, beide standen van de schakelaar, en een recorder in plaats van uitgaand HTTPS.
+
 ## Gedrag en bindingsbewijs
 
-De CIIIC-opt-in uit Jaarevent (form13), SXSW (26/27) en de generieke `list=ciiic`-route loopt door `src/services/consent/subscriber.js`. Ook het ruwe CIIIC-list-ID gaat door die adapter. Default provider blijft Mailchimp. De adapter maakt nieuwe contacten uitsluitend via DOI aan; bestaande providercontacten en lokale confirmed/pending-records worden niet door een nieuwe signup gewijzigd. Suppressies blijven geldig bij herhaling en terugschakelen. Onzekere DOI-uitkomsten blijven gereserveerd, zodat retries niet opnieuw mailen. Het nieuwe register staat los van transactionele mail.
+Met de schakelaar aan loopt de CIIIC-opt-in uit Jaarevent (form13), SXSW (26/27) en de generieke `list=ciiic`-route door `src/services/consent/subscriber.js`. Ook het ruwe CIIIC-list-ID gaat door die adapter. Default provider blijft Mailchimp. De adapter maakt nieuwe contacten uitsluitend via DOI aan; bestaande providercontacten en lokale confirmed/pending-records worden niet door een nieuwe signup gewijzigd. Suppressies blijven geldig bij herhaling en terugschakelen. Onzekere DOI-uitkomsten blijven gereserveerd, zodat retries niet opnieuw mailen. Het nieuwe register staat los van transactionele mail.
 
 Jaarevent-statuswijzigingen patchen uitsluitend bestaande leden van de eventlijst; een ontbrekend eventlid wordt niet automatisch als abonnee aangemaakt. Nieuwsbriefopt-in gaat afzonderlijk naar CIIIC. IX Labs blijft buiten deze migratie en behoudt zijn bestaande route. Afmelden voor een event is geen nieuwsbriefafmelding.
 
@@ -14,6 +27,7 @@ Live GET-controle, 6 oktober 2026: Coolify `relaybot` (`m7z1z547ie42j0d60fy0tvxx
 
 | Variabele | Contract |
 |---|---|
+| `CIIIC_CONSENT_ROUTE` | Ongezet = oud gedrag; `enabled` activeert de consentroute. Pas zetten na de overige rijen én een getekende Forms-feed |
 | `CIIIC_MARKETING_PROVIDER` | `mailchimp` (default) of `brevo`; geen automatische fallback bij providerfout |
 | `CONSENT_DB_PATH` | Default `/data/consent/registry.sqlite`; duurzame opslag buiten git |
 | `CONSENT_KEY` | 32 bytes als 64 hextekens; AES-256-GCM voor registerinhoud |
@@ -28,7 +42,7 @@ Live GET-controle, 6 oktober 2026: Coolify `relaybot` (`m7z1z547ie42j0d60fy0tvxx
 
 Het register versleutelt contactgegevens, bewijs en events. Bestanden krijgen beperkte rechten; een sleutelcontrole voorkomt dat gewijzigde sleutels een bestaand register stil onzichtbaar maken. Back-up en sleutelbewaring moeten samen worden geregeld vóór activatie. Sleutelrotatie is geen env-wijziging zonder datamigratie.
 
-**Merge is hier automatisch deploy.** Vóór merge moet de reviewer de impact van ontbrekende configuratie beoordelen: nieuwe CIIIC-opt-ins falen gesloten zonder register-/signingconfiguratie. Live hercontrole op 6 oktober 2026 vond forms13/26/27 inactief, maar de actieve Form43-feed7 wijst naar `list=ciiic`, zonder signingheader. Form43 valt dus wel onder de gewijzigde CIIIC-route. Signing-/registersleutels ontbreken in productie; merge is daarom geblokkeerd, zie [review R3](../reports/brevo-consent-rereview-2026-10-06.md). Hercontroleer de feitelijke feedbestemming bij iedere vrijgave. Accountconfiguratie en het wijzigen van Forms-feeds horen bij apart geautoriseerde uitvoering.
+**Merge is hier automatisch deploy.** Live hercontrole op 6 oktober 2026 vond forms13/26/27 inactief, maar de actieve Form43-feed7 wijst naar `list=ciiic`, zonder signingheader; signing-/registersleutels ontbreken in productie ([review R3](../reports/brevo-consent-rereview-2026-10-06.md)). Sinds de activatieschakelaar blijft die feed bij merge op het oude pad, zolang `CIIIC_CONSENT_ROUTE` in Coolify niet op `enabled` staat. Vóór merge controleert de reviewer live dat die variabele ontbreekt en dat de feedbestemming nog klopt met de tabel hierboven. Hercontroleer de feitelijke feedbestemming bij iedere vrijgave. Accountconfiguratie en het wijzigen van Forms-feeds horen bij apart geautoriseerde uitvoering.
 
 ## Forms-ingress
 
@@ -36,7 +50,7 @@ Header: `X-Ciiic-Optin-Signature`, lowercase hex HMAC-SHA256 met `CIIIC_OPTIN_WE
 
 CIIIC-aanmeldroutes: `/webhook/registration` met veld19, `/webhook/sxsw-newsletter` met veld9 voor form26 of veld11 voor form27, en `/webhook/newsletter-optin?list=ciiic&email=…&optin=…`. Checkbox-subvelden zoals `19.1` worden herkend. Taal komt uit `newsletter_language`; de generieke feed mag via `language=<veld-id>` een ander veld mappen. Ontbrekende taal wordt `nl`, expliciete waarden zijn `nl` of `en` (hoofdletters worden genormaliseerd). De generieke CIIIC-route vereist een expliciet opt-in-veld.
 
-Forms blijft verantwoordelijk voor honeypot, invultijd, ALTCHA en IP-begrenzing vóór een getekende feed. Automator bewaakt de ontvangerlimiet duurzaam. Ontbrekende signingconfiguratie geeft 503, een ongeldige handtekening 403. Een provider-/registerfout mag geen geslaagde aanmelding rapporteren. Registreer retries zonder de requestbody of adressen te loggen.
+Forms blijft verantwoordelijk voor honeypot, invultijd, ALTCHA en IP-begrenzing vóór een getekende feed. Automator bewaakt de ontvangerlimiet duurzaam. Met de schakelaar aan: ontbrekende signingconfiguratie geeft 503, een ongeldige handtekening 403. Een provider-/registerfout mag geen geslaagde aanmelding rapporteren. Registreer retries zonder de requestbody of adressen te loggen.
 
 ## Marketingevents en bevestigingsbewijs
 

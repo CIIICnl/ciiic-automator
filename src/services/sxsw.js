@@ -8,6 +8,8 @@
 
 import { requestCiiicSubscription } from './consent/subscriber.js';
 import { hasFieldValue } from './consent/ingress.js';
+import { consentRouteEnabled } from './consent/activation.js';
+import { ciiicList, subscribeMailchimp } from './newsletter-optin.js';
 
 // Form-id → field-id mapping. Lets us extract the same logical fields
 // regardless of which form fired the webhook.
@@ -20,7 +22,7 @@ const FIELD_MAP = {
  * Process a Gravity Forms webhook payload from Form 26 or 27.
  * Returns { skipped: true } when the opt-in checkbox is empty.
  */
-export async function processSxswSubmission(body, { authenticated = false, subscribe = requestCiiicSubscription } = {}) {
+export async function processSxswSubmission(body, { authenticated = false, consentRoute = consentRouteEnabled(), subscribe = requestCiiicSubscription, subscribeLegacy = subscribeMailchimp } = {}) {
   const formId = String(body.form_id || body.formId || '').trim();
   const map = FIELD_MAP[formId];
   if (!map) {
@@ -42,6 +44,12 @@ export async function processSxswSubmission(body, { authenticated = false, subsc
 
   if (!optedIn) {
     return { skipped: true, reason: 'no_optin' };
+  }
+  if (!consentRoute) {
+    // Pre-consent behaviour: upsert into the CIIIC audience, tagged by source.
+    const mc = await subscribeLegacy({ list: ciiicList(), email, firstName, lastName, tag: source });
+    console.log('Mailchimp CIIIC SXSW opt-in completed');
+    return { subscribed: true, source, mailchimp_status: mc.status };
   }
   if (!authenticated) throw new Error('Unauthenticated CIIIC opt-in');
   return subscribe({

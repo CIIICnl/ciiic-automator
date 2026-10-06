@@ -13,6 +13,7 @@ import https from 'https';
 import crypto from 'crypto';
 import { requestCiiicSubscription } from './consent/subscriber.js';
 import { hasFieldValue } from './consent/ingress.js';
+import { consentRouteEnabled } from './consent/activation.js';
 
 const MAILCHIMP_API_KEY = process.env.MAILCHIMP_API_KEY;
 const MAILCHIMP_DC = process.env.MAILCHIMP_DC || 'us11';
@@ -90,8 +91,11 @@ function apiRequest(url, options = {}) {
 /**
  * Update Mailchimp member's JAAREVENT merge field
  * Only patch existing event members. A registration is not newsletter consent.
+ * addIfMissing is the pre-consent behaviour, used only while the consent route
+ * is not enabled: an opted-in registrant absent from the event audience is
+ * added there as subscribed.
  */
-export async function updateMailchimpStatus(email, status, { request = apiRequest } = {}) {
+export async function updateMailchimpStatus(email, status, { request = apiRequest, addIfMissing = false, firstName = '', lastName = '' } = {}) {
   if (MAILCHIMP_LIST_ID.toLowerCase() === CIIIC_LIST_ID.toLowerCase()) {
     throw new Error('Jaarevent and CIIIC marketing audiences must be separate');
   }
@@ -115,6 +119,23 @@ export async function updateMailchimpStatus(email, status, { request = apiReques
 
   if (result.status >= 400) {
     if (result.status === 404) {
+      if (addIfMissing) {
+        const added = await request(
+          `https://${MAILCHIMP_DC}.api.mailchimp.com/3.0/lists/${MAILCHIMP_LIST_ID}/members`,
+          {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              email_address: email.toLowerCase().trim(),
+              status: 'subscribed',
+              merge_fields: { FNAME: firstName, LNAME: lastName, JAAREVENT: status },
+            }),
+          }
+        );
+        if (added.status >= 400) throw new Error(`Mailchimp event member add failed (${added.status})`);
+        console.log(`Jaarevent member added with JAAREVENT=${status}`);
+        return { added: true, status };
+      }
       console.log('Jaarevent member absent; event audience update skipped');
       return { skipped: true, reason: 'not_in_list' };
     }
@@ -193,7 +214,7 @@ async function updateNotionStatus(email, status) {
  * Process a new registration from Gravity Forms webhook
  * GF sends form field values keyed by field ID
  */
-export async function processRegistration(body, { authenticated = false, updateEvent = updateMailchimpStatus, updateNotion = updateNotionStatus, subscribe = requestCiiicSubscription } = {}) {
+export async function processRegistration(body, { authenticated = false, consentRoute = consentRouteEnabled(), updateEvent = updateMailchimpStatus, updateNotion = updateNotionStatus, subscribe = requestCiiicSubscription } = {}) {
   // GF webhook payload: field values by ID
   // Field 1: First name, 9: Last name, 2: Email, 3: Organisation, 11: Job title
   // Field 19: Stay informed (checkbox) — opt-in for Mailchimp newsletter
@@ -206,7 +227,7 @@ export async function processRegistration(body, { authenticated = false, updateE
   if (!email) {
     throw new Error('No email address in registration payload');
   }
-  if (stayInformed && !authenticated) throw new Error('Unauthenticated CIIIC opt-in');
+  if (consentRoute && stayInformed && !authenticated) throw new Error('Unauthenticated CIIIC opt-in');
 
   console.log(`Processing Jaarevent registration; opt-in=${stayInformed}`);
 
@@ -214,13 +235,15 @@ export async function processRegistration(body, { authenticated = false, updateE
 
   // Event status does not confer marketing consent or create an event member.
   try {
-    results.mailchimp = await updateEvent(email, 'geregistreerd');
+    results.mailchimp = consentRoute
+      ? await updateEvent(email, 'geregistreerd')
+      : await updateEvent(email, 'geregistreerd', { addIfMissing: stayInformed, firstName, lastName });
   } catch (err) {
     console.error('Mailchimp event update error:', err.message);
     results.mailchimpError = err.message;
   }
 
-  if (stayInformed) {
+  if (consentRoute && stayInformed) {
     try {
       results.newsletter = await subscribe({
         email, firstName, lastName, language: body.newsletter_language,
