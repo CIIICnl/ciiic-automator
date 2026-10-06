@@ -69,17 +69,37 @@ export async function withCheckpointLock(file, work) {
 }
 
 export async function applyReconciliation({ members, registry, checkpointFile, encryptionKey, eventKey,
-  snapshotAt }) {
+  snapshotAt, snapshotStartedAt = snapshotAt }) {
+  if (!Number.isFinite(Date.parse(snapshotStartedAt)) || Date.parse(snapshotStartedAt) > Date.parse(snapshotAt)) {
+    throw new Error('Invalid snapshot observation window');
+  }
+  const pendingFile = `${checkpointFile}.pending`;
+  const finish = async pending => {
+    for (const event of pending.events) await registry.applyEvent(event);
+    await writeCheckpoint(checkpointFile, pending, encryptionKey);
+    await fs.rm(pendingFile, { force: true });
+    return pending.summary;
+  };
+  // Persist the exact observation and IDs before the first mutation. Recovery
+  // replays this batch before interpreting a later snapshot, even after restart.
+  const pending = await readCheckpoint(pendingFile, encryptionKey);
+  if (pending) {
+    const summary = await finish(pending);
+    if (Date.parse(snapshotAt) <= Date.parse(pending.at)) return summary;
+  }
   const previousSnapshot = await readCheckpoint(checkpointFile, encryptionKey);
+  if (previousSnapshot && Date.parse(snapshotAt) <= Date.parse(previousSnapshot.at)) {
+    throw new Error('Snapshot must advance');
+  }
   const result = await reconcileMailchimpSnapshot({ members, registry, eventKey, snapshotComplete: true,
     snapshotAt, previousSnapshot });
-  for (const event of result.events) registry.applyEvent(event);
-  const snapshot = { complete: true, at: snapshotAt, members: members.map((member) => ({
+  const snapshot = { complete: true, at: snapshotAt, startedAt: snapshotStartedAt, members: members.map((member) => ({
     id: member.id, email_address: member.email_address, status: member.status, list_id: member.list_id,
     interests: member.interests, last_changed: member.last_changed, timestamp_opt: member.timestamp_opt,
-  })) };
-  await writeCheckpoint(checkpointFile, snapshot, encryptionKey);
-  return { ...result.summary, applied: result.events.length, checkpointCreated: !previousSnapshot };
+  })), events: result.events,
+    summary: { ...result.summary, applied: result.events.length, checkpointCreated: !previousSnapshot } };
+  await writeCheckpoint(pendingFile, snapshot, encryptionKey);
+  return finish(snapshot);
 }
 
 async function main() {
@@ -92,6 +112,7 @@ async function main() {
   const eventKey = process.env.CONSENT_HMAC_KEY;
   if (!eventKey || Buffer.byteLength(eventKey) < 32) throw new Error('CONSENT_HMAC_KEY required');
   await withCheckpointLock(checkpointFile, async () => {
+    const snapshotStartedAt = new Date().toISOString();
     const first = await mailchimpMembers();
     const members = await mailchimpMembers();
     if (snapshotDigest(first, eventKey) !== snapshotDigest(members, eventKey)) {
@@ -100,7 +121,7 @@ async function main() {
     const registry = createConsentStore({ path: dbPath, encryptionKey: process.env.CONSENT_KEY, hmacKey: eventKey });
     try {
       const summary = await applyReconciliation({ members, registry, checkpointFile, encryptionKey,
-        eventKey, snapshotAt: new Date().toISOString() });
+        eventKey, snapshotStartedAt, snapshotAt: new Date().toISOString() });
       process.stdout.write(`${JSON.stringify(summary)}\n`);
     } finally {
       registry.close();

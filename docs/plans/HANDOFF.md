@@ -1,20 +1,18 @@
-# Uitvoer: herstel voorkeurreconciliation in PR #2
+# Review-en-merge: herstelde consentvoorbereiding PR #2
 
-Rol: uitvoer. Tier: `flagship-review` (toestemming en migratie); na herstel een nieuwe flagship-review.
+Rol: stuur. Tier: `flagship-review` (toestemming en migratie); onafhankelijke flagship-review in schone context vereist.
 
 ## Stand bij vertrek
 
-6 oktober 2026: Astra heeft [PR #2](https://github.com/CIIICnl/ciiic-automator/pull/2), code-head `f4e89d9`, gereviewd en niet gemerged. De 32 bestaande tests en CI Node20/22 slagen, maar twee aanvullende probes met echte SQLite/checkpoints reproduceren blokkerende fouten. [Reviewrapport](../reports/brevo-consent-review-2026-10-06.md) bevat locaties, reproduceerstappen en herstelcriteria. Main en productie zijn niet gewijzigd. Branch: `feat/brevo-consent-preparation`.
-
-R1: reconciliation gebruikt scantijd als wijzigingstijd, waardoor een oudere Mailchimp-keuze een nieuwere, vertraagd ontvangen Brevo-keuze verdringt. R2: conflicten komen alleen in de scansamenvatting; contacten blijven verzendbaar, en een latere eenduidige broncorrectie verdwijnt door checkpointvervanging. TODO3/4 en de oorspronkelijke automator-meta-briefing blijven open.
+6 oktober 2026: herstelronde voor [PR #2](https://github.com/CIIICnl/ciiic-automator/pull/2) op `feat/brevo-consent-preparation` gereed. R1 bewaart bronwijzigingen als intervallen naast exacte callbackmomenten en beslist transactioneel tegen duurzaam bewijs. R2 slaat taalconflicten duurzaam op; eenduidige, bewezen latere correcties kunnen ze opheffen. Versleutelde pending-batches bewaren eventidentiteit en tijdgrenzen bij gedeeltelijke toepassing. De volledige suite heeft 42 groene tests, inclusief tien nieuwe SQLite-/checkpointregressies. [Validatierapport](../reports/brevo-consent-validation-2026-10-06.md) en [runbook](../reference/ciiic-consent-preparation.md) zijn bijgewerkt. Main en productie zijn niet gewijzigd. TODO3/4 en de oorspronkelijke meta-briefing blijven open.
 
 ## Opdracht
 
-1. Lees het reviewrapport, de [uitvoeringsbrief](briefs/brevo-consent-preparation.md) en het goedgekeurde hubplan secties 2–6. Werk aan dezelfde PR #2; geen nieuwe migratie- of activatiescope.
-2. Herstel R1 en R2 met duurzame bron-/conflictbewijzen, veilige verwerking van vertraagde callbacks, gecontroleerd conflictherstel en stabiele retry-identiteit. Voeg regressietests toe voor beide aankomstvolgordes, meerdere scans, herstart, gedeeltelijke toepassing en blokkering door de editieboekhouding. Behoud suppressiemonotoniciteit en bevroren edities; draai de gehele suite.
-3. Werk validatierapport en runbook bij, commit en push naar de PR-branch. Laat PR #2 open voor een nieuwe flagship-review in schone context; merge de eigen reparatie niet. Die review moet vóór merge ook de actuele deploy-impact beoordelen. TODO3/4 pas na acceptatie sluiten; TODO5 blijft afzonderlijk geautoriseerde productievoorbereiding.
-4. Controleer `~/.claude/bin/meta briefings.sh open ciiic-automator`; sluit de oorspronkelijke briefing pas met bewijs van alle criteria. Log de sessie in JAAP-KB. Behoud het doorgeefblok hieronder.
-5. Overschrijf deze handoff met de review-en-merge-opdracht voor de herstelde PR #2, inclusief tier en resterende productiepoorten; neem deze overschrijf-plicht weer op en eindig met de bijbehorende sluitregel.
+1. Review de volledige actuele PR #2 tegen de [brief](briefs/brevo-consent-preparation.md), hubplan secties 2–6 en [oorspronkelijke review](../reports/brevo-consent-review-2026-10-06.md). Controleer R1/R2 zelfstandig: beide aankomstvolgordes, scanvensters, late callbacks, conflictbehoud, herstel na gedeeltelijke toepassing en editieblokkering. Draai de volledige suite en controleer CI Node20/22 op de actuele head.
+2. Beoordeel vóór merge expliciet de actuele deploy-impact: main deployt automatisch. Verifieer live feedstatus en benodigde register-/signingconfiguratie met alleen-lezen controles. Ongeconfigureerde CIIIC-opt-ins falen gesloten. Leid geen productieconfiguratie, import, activatie, cutover of verzending af uit deze voorbereiding; laat de PR open als veilig deployen niet bewezen is.
+3. Bij acceptatie én veilige deploy-impact: merge, verifieer de vereiste live uitkomst, voer `merge-housekeeping` uit en sluit TODO3/4 alleen met bewijs. Bij afwijzing: concrete herstelcriteria op dezelfde PR. TODO5 blijft afzonderlijk activatiewerk met autoritatief DOI-bewijs, consumerkoppelingen en reconciliation vóór T0. Oude proefregisters uit de afgewezen versie zijn geen betrouwbare productiebron.
+4. Controleer `~/.claude/bin/meta briefings.sh open ciiic-automator`; sluit de oorspronkelijke briefing alleen na bewijs van alle Done-when-criteria. Log de sessie in JAAP-KB en behoud het doorgeefblok hieronder.
+5. Overschrijf deze handoff met de passende vervolgopdracht, neem deze overschrijf-plicht weer op en eindig met de bijbehorende sluitregel. Bij een nog open PR gaat herstel of nieuwe review vóór TODO1.
 
 ## Doorgeefblok: bestaande opdrachten behouden
 

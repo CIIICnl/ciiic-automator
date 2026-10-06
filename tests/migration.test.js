@@ -65,7 +65,9 @@ test('unrelated Mailchimp profile edit cannot overwrite a Brevo language choice'
   const ambiguous = await reconcileMailchimpSnapshot({ members: [changed], registry, eventKey: 'fixture-secret',
     snapshotComplete: true, snapshotAt: '2026-10-10T00:00:00Z',
     previousSnapshot: { complete: true, at: '2026-10-07T00:00:00Z', members: [prior] } });
-  assert.equal(ambiguous.summary.skipped.concurrent_preference_conflict, 1);
+  assert.equal(ambiguous.events[0].type, 'preference-observation');
+  assert.equal(ambiguous.events[0].previousObservedAt, '2026-10-07T00:00:00Z');
+  assert.equal(ambiguous.events[0].occurredAt, undefined);
 });
 
 test('rollback delta retains every change since T0 in causal order', () => {

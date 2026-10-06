@@ -27,6 +27,9 @@ export async function reconcileMailchimpSnapshot({ members, registry, eventKey, 
     if (previousSnapshot.complete !== true || !Number.isFinite(Date.parse(previousSnapshot.at)) || !Array.isArray(previousSnapshot.members)) {
       throw new Error('Complete previous snapshot required');
     }
+    if (previousSnapshot.startedAt !== undefined && (!Number.isFinite(Date.parse(previousSnapshot.startedAt)) ||
+      Date.parse(previousSnapshot.startedAt) > Date.parse(previousSnapshot.at))) throw new Error('Invalid previous observation window');
+    if (Date.parse(previousSnapshot.at) >= Date.parse(snapshotAt)) throw new Error('Snapshot must advance');
     for (const old of previousSnapshot.members) {
       const oldEmail = canonicalEmail(old.email_address);
       if (oldEmail) previous.set(oldEmail, old);
@@ -48,7 +51,6 @@ export async function reconcileMailchimpSnapshot({ members, registry, eventKey, 
     }
     if (seen.has(email)) continue;
     seen.add(email);
-    const current = await registry.get(email);
     const status = String(member.status ?? '').toLowerCase();
     const when = member.last_changed || member.timestamp_opt;
     if (status === 'unsubscribed' || status === 'cleaned') {
@@ -62,25 +64,26 @@ export async function reconcileMailchimpSnapshot({ members, registry, eventKey, 
       continue;
     }
     const preference = languageFromInterests(member.interests);
+    const old = previous.get(email);
+    const oldPreference = old ? languageFromInterests(old.interests) : null;
     if (preference.reason) {
       reasons[preference.reason] = (reasons[preference.reason] || 0) + 1;
-      continue;
-    }
-    const old = previous.get(email);
-    if (!old) {
+    } else if (!old) {
       reasons.no_preference_checkpoint = (reasons.no_preference_checkpoint || 0) + 1;
       continue;
-    }
-    const oldPreference = languageFromInterests(old.interests);
-    if (oldPreference.reason || oldPreference.language === preference.language) continue;
-    const currentLanguageTime = typeof current?.languageAt === 'number' ? current.languageAt : Date.parse(current?.languageAt);
-    if (Number.isFinite(currentLanguageTime) && currentLanguageTime > Date.parse(previousSnapshot.at)) {
-      reasons.concurrent_preference_conflict = (reasons.concurrent_preference_conflict || 0) + 1;
+    } else if (!oldPreference.reason && oldPreference.language === preference.language) {
       continue;
     }
-    if (current?.language === preference.language) continue;
-    events.push({ email, id: eventId({ ...member, last_changed: snapshotAt }, 'preference', preference.language, eventKey),
-      type: 'preference', source: 'mailchimp', occurredAt: snapshotAt, language: preference.language });
+    // Decisions belong inside applyEvent's transaction, against the latest
+    // durable evidence, not the registry state when this plan was computed.
+    const previousObservedAt = old ? (previousSnapshot.startedAt ?? previousSnapshot.at) : null;
+    const id = crypto.createHmac('sha256', eventKey).update(JSON.stringify([
+      email, member.id, 'preference-observation', previousSnapshot?.at ?? null,
+      oldPreference, preference,
+    ])).digest('hex');
+    events.push({ email, id, type: 'preference-observation', source: 'mailchimp',
+      observedAt: snapshotAt, previousObservedAt, sourceChangedAt: when || null,
+      language: preference.language ?? null, reason: preference.reason || null });
   }
   return { events, summary: { scanned: seen.size, candidateEvents: events.length, duplicates, skipped: reasons } };
 }

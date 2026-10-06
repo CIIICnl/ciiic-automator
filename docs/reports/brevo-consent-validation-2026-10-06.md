@@ -17,9 +17,25 @@ Bron: meta-briefing `2026-10-06--from-jaap-work--to-ciiic-automator--brevo-conse
 | Migratiepreflight/read-back | Synthetische statusmatrix, deterministische volgorde, suppressies eerst, dubbele identiteit, taalconflict en ontbreken van bewijs; read-back controleert lijst/taal/suppressies |
 | Owner/listbinding | Live GETs op Coolify en Mailchimp: jaarevent `0e404ef800`, CIIIC `67fe159b9d`, beide company `CIIIC`; alleen niet-persoonlijke bindingsgegevens bewaard |
 
-`npm test`: 32 tests geslaagd, nul mislukt. `git diff --check`: schoon. Gitleaks over staged wijzigingen: geen secrets. GitHub Actions voor Node20 en Node22 controleert iedere PR-head; eerdere runs zijn groen. Het actuele resultaat staat op PR2.
+`npm test`: 42 tests geslaagd, nul mislukt. `git diff --check`: schoon. Gitleaks over staged wijzigingen: geen secrets. GitHub Actions voor Node20 en Node22 controleert iedere PR-head; eerdere runs zijn groen. Het actuele resultaat staat op PR2.
 
 Mutatiecontrole: in een geïsoleerde tijdelijke kopie is alleen `jaarevent.verifySignature` vervangen door altijd-waar. `npm test` faalde precies op `existing Jaarevent status HMAC verifies the literal raw body` (toen 29 geslaagd, 1 gefaald). De tijdelijke kopie is verwijderd; de werkboom bleef ongewijzigd. Dit dekt tevens de minimale klaar-als van TODO3; sluiten pas na review/merge.
+
+## Herstel van reviewbevindingen R1 en R2
+
+De eerdere review op `f4e89d9` bleef terecht geblokkeerd ondanks 32 groene tests. De herstelronde voegt tien regressietests in `tests/reconciliation.test.js` toe, met echte tijdelijke SQLite-registers en AES-GCM-checkpoints. De bestaande test voor een naamswijziging blijft behouden; een concurrentieproef controleert nu dat bronbewijs wordt uitgegeven in plaats van stil overgeslagen.
+
+| Bevinding / grens | Herstelbewijs |
+|---|---|
+| R1: scan 10:05 mag geen exacte taalwijziging worden | Mailchimp-keuze binnen 10:00–10:05 en Brevo-keuze 10:03 leveren quarantaine, in beide aankomstvolgordes en bij callback tussen plan en toepassing; bronmoment blijft apart bewaard |
+| Lange gepagineerde scan | Ondergrens is begin vorige scan, niet eindtijd; een tussentijdse callback blijft conflicterend |
+| Vertraagde callback / herstart | Broninterval blijft in versleutelde `preferenceEvidence`; callback na herstart heropent het conflict correct; meerdere ongewijzigde scans wissen niets |
+| R2: beide interests | Duurzame blokkade bij nieuwe én bestaande editie; volgende eenduidige EN-correctie wordt verwerkt, ook na herstart en meerdere scans |
+| Gedeeltelijke toepassing | Pending-batch bewaart oorspronkelijke IDs en intervallen; retry na herstart verwerkt die vóór de nieuwere scan, voor zowel taalwijzigingen als conflicten |
+| Gecontroleerd herstel | Bewezen latere profielkeuze of bronwijziging heft alleen voorkeurconflict op; oudere vertraagde callback overschrijft niets; suppressie en consent blijven behouden |
+| Editieboekhouding | Reeds begonnen editie houdt NL-toewijzing bij latere EN-correctie; onzekere claim blokkeert retry via andere provider |
+
+Deze uitkomsten zijn uitvoeringsbewijs en vragen nog een onafhankelijke flagship-review. De oorspronkelijke review blijft als historisch rapport behouden. Geen productiegegevens of configuratie gelezen of gewijzigd in deze herstelronde.
 
 ## Grenzen en productiepoorten
 

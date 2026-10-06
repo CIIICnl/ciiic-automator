@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
+import { applyPreference } from './preferences.js';
 
 export function normalizeEmail(value) {
   const email = String(value || '').trim().toLowerCase();
@@ -73,8 +74,8 @@ export function createConsentStore({ path: dbPath, encryptionKey, hmacKey, clock
   };
   const applyEvent = db.transaction(event => {
     const email = normalizeEmail(event.email);
-    if (!event.id || !event.source || !['preference', 'suppress', 'pending', 'confirmed'].includes(event.type)) throw new Error('Invalid consent event');
-    const occurredAt = Date.parse(event.occurredAt || '');
+    if (!event.id || !event.source || !['preference', 'preference-observation', 'suppress', 'pending', 'confirmed'].includes(event.type)) throw new Error('Invalid consent event');
+    const occurredAt = Date.parse((event.type === 'preference-observation' ? event.observedAt : event.occurredAt) || '');
     if (!Number.isFinite(occurredAt)) throw new Error('Event time required');
     if (event.type === 'confirmed' && (!event.evidence || !['provider-confirmation', 'migration-approval'].includes(event.evidence.kind) || typeof event.evidence.reference !== 'string' || !event.evidence.reference.trim() || !['brevo-confirmation', 'mailchimp-confirmation', 'migration-approved'].includes(event.source))) throw new Error('Confirmed consent requires authoritative evidence');
     const keyId = eventKey(`${event.source}:${event.id}:${email}`);
@@ -85,18 +86,9 @@ export function createConsentStore({ path: dbPath, encryptionKey, hmacKey, clock
       record.suppressed = true;
       record.suppressionReason = event.reason || event.source;
       record.suppressionAt = Math.max(record.suppressionAt || 0, occurredAt);
-    } else if (event.type === 'preference') {
-      const language = normalizeLanguage(event.language);
-      const priority = source => source === 'brevo' || source === 'brevo-profile' ? 2 : 1;
-      if (record.languageAt === occurredAt && event.source === record.languageSource && record.language !== language) {
-        record.language = null;
-        record.preferenceConflict = true;
-      } else if (!record.languageAt || occurredAt > record.languageAt || (occurredAt === record.languageAt && !record.preferenceConflict && priority(event.source) > priority(record.languageSource))) {
-        record.language = language;
-        record.languageSource = event.source;
-        record.languageAt = occurredAt;
-        record.preferenceConflict = false;
-      }
+    } else if (event.type === 'preference' || event.type === 'preference-observation') {
+      const language = event.type === 'preference-observation' && event.reason ? null : normalizeLanguage(event.language);
+      applyPreference(record, event, language);
     } else if (event.type === 'pending') {
       if (record.consent === 'unknown') record.consent = 'pending';
     } else if (event.type === 'confirmed' && !record.suppressed) {
