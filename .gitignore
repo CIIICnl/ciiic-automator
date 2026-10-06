@@ -8,3 +8,9 @@ node_modules/
 *.xlsx
 *.xls
 *.csv
+
+# Consent registries and temporary migration exports stay outside git.
+.scratch/
+*.sqlite
+*.sqlite-*
+*.encrypted

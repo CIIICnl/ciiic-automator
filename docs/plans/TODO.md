@@ -4,7 +4,7 @@ Leeswijzer in het kort (volledig: skill `werkwijze`): _In progress_ is een claim
 
 ## In progress
 
-_(leeg)_
+- #4 Brevo-consentvoorbereiding - @mac - `feat/brevo-consent-preparation` - klaar als: synthetische acceptatiematrix groen en PR met flagship-reviewoverdracht.
 
 ## Open werk
 
@@ -22,11 +22,17 @@ Klaar als: `https://bot.ciiic.nl/health` toont `drafts.success: true` met een co
 
 Klaar als: elke vlag is óf in de Coolify-env van `relaybot` gezet, óf de bron is uit `src/services/radar/config.js` verwijderd; het besluit per bron staat in één regel in `done/decisions.md`.
 
-### 3. Geen enkele geautomatiseerde test
+### 3. Kritieke routes missen een vaste regressietest
 
-`package.json` heeft alleen `start` en `dev`. De repo draagt inmiddels een HMAC-geverifieerde webhook, een rate-limited draft-store en een radar-pipeline met zeven bronparsers — alle drie stil kapot te krijgen. Een minimale node:test-suite over de pure stukken (signature-verificatie, token-validatie, dedup) is goedkoper dan de eerste keer dat het misgaat.
+Op `main` heeft `package.json` alleen `start` en `dev`. De repo draagt inmiddels een HMAC-geverifieerde webhook, een rate-limited draft-store en een radar-pipeline met zeven bronparsers — alle drie stil kapot te krijgen. Een minimale node:test-suite over de pure stukken (signature-verificatie, token-validatie, dedup) is goedkoper dan de eerste keer dat het misgaat.
 
-Klaar als: `npm test` draait en faalt op een moedwillig gebroken signature-check.
+Klaar als: `npm test` draait en faalt op een moedwillig gebroken signature-check. De uitvoering van #4 neemt deze minimale testbasis mee; pas na review en merge dit item sluiten.
+
+### 4. CIIIC-inschrijfpaden delen nog geen toestemming- en taalcontract
+
+**[flagship-review] [delegeerbaar]** (toestemming, auth en migratie). Drie writers kunnen zonder gedeeld register uiteenlopen; afmelden moet afmelden blijven en iedere actieve ontvanger krijgt één taal. Goed gedaan: één provideradapter, duurzaam suppressieregister en controleerbare migratievoorbereiding volgens [de uitvoeringsbrief](briefs/brevo-consent-preparation.md).
+
+Bron: `2026-10-06--from-jaap-work--to-ciiic-automator--brevo-consent-en-migratievoorbereiding.md`. Klaar als: synthetische statusmatrix, callback-auth/retry, DOI-limiet en deterministische dry-run slagen; owner/listbinding live geverifieerd; PR met bewijs gereviewd. Import, accountinrichting, cutover en verzending vragen afzonderlijk mandaat.
 
 ## Recently done
 

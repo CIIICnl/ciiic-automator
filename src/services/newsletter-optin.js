@@ -22,6 +22,7 @@
 
 import https from 'https';
 import crypto from 'crypto';
+import { requestCiiicSubscription } from './consent/subscriber.js';
 
 const MAILCHIMP_API_KEY = process.env.MAILCHIMP_API_KEY;
 const MAILCHIMP_DC = process.env.MAILCHIMP_DC || 'us11';
@@ -77,10 +78,16 @@ export function fieldValue(body, id) {
 }
 
 export function resolveList(alias) {
-  if (!alias) return null;
+  if (typeof alias !== 'string' || !alias) return null;
+  if (String(alias).toLowerCase() === (process.env.MAILCHIMP_JAAREVENT_LIST_ID || '0e404ef800').toLowerCase()) return null;
   if (LISTS[alias]) return { alias, ...LISTS[alias] };
+  if (alias.toLowerCase() === LISTS.ciiic.id.toLowerCase()) return { alias: 'ciiic', ...LISTS.ciiic };
   if (/^[a-f0-9]{10}$/i.test(alias)) return { alias, id: alias, orgMergeTag: null };
   return null;
+}
+
+export function targetsCiiicAudience(query) {
+  return resolveList(query?.list)?.id.toLowerCase() === LISTS.ciiic.id.toLowerCase();
 }
 
 async function subscribe({ list, email, firstName, lastName, organisation, tag }) {
@@ -112,7 +119,7 @@ async function subscribe({ list, email, firstName, lastName, organisation, tag }
 /**
  * Process one webhook call. `query` = parsed URL query, `body` = GF payload.
  */
-export async function processNewsletterOptin(query, body) {
+export async function processNewsletterOptin(query, body, { authenticated = false, subscribeCiiic = requestCiiicSubscription } = {}) {
   const list = resolveList(query.list);
   if (!list) throw new Error(`Unknown or missing list: ${query.list || '(none)'}`);
   if (!query.email) throw new Error('Missing email field id (?email=)');
@@ -127,13 +134,21 @@ export async function processNewsletterOptin(query, body) {
   if (!email) throw new Error(`No email address in payload (form ${formId}, field ${query.email})`);
 
   const optedIn = query.optin ? Boolean(fieldValue(body, query.optin)) : true;
-  console.log(
-    `📝 Newsletter opt-in (form ${formId} → ${list.alias}${tag ? `, tag ${tag}` : ''}): ${firstName} ${lastName} <${email}> opt-in=${optedIn}`
-  );
+  console.log(`Newsletter opt-in received: opt-in=${optedIn}`);
 
-  if (!optedIn) return { skipped: true, reason: 'no_optin', email };
+  if (!optedIn) return { skipped: true, reason: 'no_optin' };
+
+  if (targetsCiiicAudience(query)) {
+    if (!authenticated) throw new Error('Unauthenticated CIIIC opt-in');
+    if (!query.optin) throw new Error('CIIIC opt-in field is required');
+    return subscribeCiiic({
+      email, firstName, lastName, language: fieldValue(body, query.language || 'newsletter_language'),
+      source: tag || `gravity-forms-${formId}`,
+      consentEvidence: { kind: 'gravity-forms', signed: true, formId, fieldId: query.optin, entryId: body.entry_id },
+    });
+  }
 
   const mc = await subscribe({ list, email, firstName, lastName, organisation, tag });
-  console.log(`✅ Mailchimp ${list.alias}: ${email} ${mc.status}${tag ? ` (tag: ${tag})` : ''}`);
+  console.log(`Mailchimp ${list.alias} opt-in completed with status ${mc.status}`);
   return { subscribed: true, email, list: list.alias, tag, mailchimp_status: mc.status };
 }
