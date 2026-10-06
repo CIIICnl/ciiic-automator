@@ -57,6 +57,17 @@ test('current suppression removes an assigned recipient before provider claim', 
   assert.equal((await editionSummary(db, 'edition-2')).suppressed, 1);
 });
 
+test('suppression arriving after the durable claim still blocks provider handoff', async () => {
+  const db = store();
+  let reads = 0;
+  db.get = async () => ({ consent: 'confirmed', suppressed: ++reads > 1 });
+  await prepareEdition(db, 'edition-late-suppression', [{ email: 'late@example.test',
+    language: 'nl', consent: 'confirmed' }]);
+  assert.deepEqual(await claimEditionRecipient(db, 'edition-late-suppression',
+    'late@example.test', 'nl', 'brevo'), { allowed: false, reason: 'current_suppression' });
+  assert.equal((await editionSummary(db, 'edition-late-suppression')).suppressed, 1);
+});
+
 test('two durable workers can claim a recipient only once', async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ciiic-edition-test-'));
   fs.chmodSync(directory, 0o700);

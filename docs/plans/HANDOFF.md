@@ -6,7 +6,7 @@ Rol: stuur. Modelkeuze: flagship vereist wegens tier `flagship-review` (consent,
 
 [PR #2](https://github.com/CIIICnl/ciiic-automator/pull/2) levert TODO4: gedeelde CIIIC-provideradapter, versleuteld suppressieregister, callback-/Forms-auth, GET-only preflight en bronreconciliation, rollbackdelta en editieboekhouding. Hubplan PR7 is gemerged (`714665b`) en de planbriefing is geleverd (`_meta` `2d04982d`). Automatorcode is uitsluitend op de PR-branch gepusht; niets gedeployd, geïmporteerd of verzonden.
 
-31 tests slagen lokaal en CI op Node20/22 is groen. Een geïsoleerde mutatie van de bestaande Jaarevent-signaturecheck laat de suite falen. Gitleaks en diff-check schoon. Bewijs: `docs/reports/brevo-consent-validation-2026-10-06.md`. De live bindingscontrole bevestigde jaarevent `0e404ef800` tegenover CIIIC `67fe159b9d`; beide owner/company `CIIIC`.
+32 tests slagen lokaal en CI op Node20/22 is groen. Een geïsoleerde mutatie van de bestaande Jaarevent-signaturecheck laat de suite falen. Gitleaks en diff-check schoon. Bewijs: `docs/reports/brevo-consent-validation-2026-10-06.md`. De live bindingscontrole bevestigde jaarevent `0e404ef800` tegenover CIIIC `67fe159b9d`; beide owner/company `CIIIC`.
 
 Productiepoorten staan in TODO5 en `docs/reference/ciiic-consent-preparation.md`: autoritatieve DOI-bevestiging is nog niet automatisch aangesloten; pending blijft niet-verzendbaar. CIIIC-signing-/registerconfiguratie ontbreekt nog, reconciliation moet vóór T0 starten en worden ingepland, en nieuwsbrief moet de ledger gebruiken. Main deployt automatisch: review de impact vóór merge, niet pas erna. De voorbereiding autoriseert geen productieconfiguratie/import/cutover/verzending.
 

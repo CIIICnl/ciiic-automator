@@ -89,6 +89,8 @@ test('baseline readback verifies membership, language, and durable suppression',
     attributes: { TAAL: 'nl' }, emailBlacklisted: true }] }).issues.unexpectedSuppression, 1);
   assert.equal(compareBaselineReadback({ ...input, priorBrevoContacts: [{ email: 'yes@example.test',
     emailBlacklisted: true }] }).issues.lostExistingBlock, 1);
+  assert.equal(compareBaselineReadback({ ...input, priorBrevoContacts: [{ email: 'yes@example.test',
+    listUnsubscribed: [42] }] }).issues.lostExistingBlock, 1);
   assert.throws(() => compareBaselineReadback({ ...input, automationsDisabled: false }), /disabled automations/);
   assert.throws(() => compareBaselineReadback({ ...input, targetBrevoListId: 3 }), /target list/);
 });

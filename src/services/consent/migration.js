@@ -152,9 +152,11 @@ export function compareBaselineReadback({ plan, contacts, registryByEmail, targe
     if (!registryByEmail[email]?.suppressed) issues.missingSuppression += 1;
   }
   for (const prior of priorBrevoContacts) {
-    if (!prior.emailBlacklisted) continue;
+    if (!prior.emailBlacklisted && !prior.listUnsubscribed?.includes(Number(targetBrevoListId))) continue;
     const now = actual.get(canonicalEmail(prior.email));
-    if (now && !now.emailBlacklisted) issues.lostExistingBlock += 1;
+    if (now && ((prior.emailBlacklisted && !now.emailBlacklisted) ||
+      (prior.listUnsubscribed?.includes(Number(targetBrevoListId)) &&
+       !now.listUnsubscribed?.includes(Number(targetBrevoListId))))) issues.lostExistingBlock += 1;
   }
   return { verified: Object.values(issues).every((count) => count === 0), issues,
     expectedMembership: expected.size, expectedSuppressions: suppressed.size };

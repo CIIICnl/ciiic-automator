@@ -60,7 +60,7 @@ export async function prepareEdition(store, editionId, contacts) {
 export async function claimEditionRecipient(store, editionId, emailInput, language, provider) {
   const email = canonicalEmail(emailInput);
   if (!email || !['nl', 'en'].includes(language) || !provider) throw new Error('Invalid edition claim');
-  return cas(store, editionId, async (current) => {
+  const claim = await cas(store, editionId, async (current) => {
     if (!current?.assignments?.[email]) return { write: false, value: { allowed: false, reason: 'outside_snapshot' } };
     const entry = current.assignments[email];
     if (entry.language !== language) return { write: false, value: { allowed: false, reason: 'wrong_language' } };
@@ -76,6 +76,19 @@ export async function claimEditionRecipient(store, editionId, emailInput, langua
     state.assignments[email] = { ...entry, outcome: 'unknown', provider, claimedAt: new Date().toISOString() };
     return { state, value: { allowed: true, email, language, provider } };
   });
+  if (!claim.allowed) return claim;
+  const latest = await store.get(email);
+  if (latest && !latest.suppressed && !latest.preferenceConflict && latest.consent === 'confirmed') return claim;
+  await cas(store, editionId, async (current) => {
+    const entry = current?.assignments?.[email];
+    if (!entry || entry.outcome !== 'unknown' || entry.provider !== provider) {
+      return { write: false, value: null };
+    }
+    const state = structuredClone(current);
+    state.assignments[email].outcome = 'suppressed';
+    return { state, value: null };
+  });
+  return { allowed: false, reason: 'current_suppression' };
 }
 
 /** Only a verified provider receipt resolves an unknown claim as sent. */
