@@ -1,4 +1,4 @@
-Status: afgerond — 2026-09-10 · TODO-adres: geen (uitgevoerd vóór de werkwijze hier stond) · hangt samen met: `publieke-waarden-2` (frontend), `docs/plans/TODO.md` #1 (productie-smoke-test staat nog open)
+Status: afgerond — 2026-09-10 · TODO-adres: geen (uitgevoerd vóór de werkwijze hier stond) · hangt samen met: `publieke-waarden-2` (frontend), `docs/plans/TODO.md` #1 (productie-smoke-test gedaan 2026-10-06, zie `done/2026-10.md`; deliverability-restpunt is #6)
 
 Uitgevoerd: `src/services/drafts.js`, de `/draft/*`-router in `src/index.js`, `sendDraftResumeEmail()` in `src/services/brevo.js`, het `drafts_data`-volume in `docker-compose.yml` en de README-sectie staan alle in `main`. Van de open vragen onderaan zijn 2 (trust proxy, `app.set('trust proxy', 1)` in `src/index.js`), 4 (herhaalbaar, geen single-use) en 8 (er is een `deleteDraft`) in de bouw beslist; vraag 5 (deliverability) is nooit getoetst en leeft door als TODO-item 1. De tekst hieronder is de oorspronkelijke briefing, ongewijzigd bewaard als naslag.
 

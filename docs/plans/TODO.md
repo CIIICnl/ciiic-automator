@@ -8,14 +8,6 @@ _(leeg)_
 
 ## Open werk
 
-### 1. Draft-resume in productie roken
-
-**[workhorse] [delegeerbaar]** De endpoints staan live (`POST /draft/save`, `GET /draft/:token`), maar de smoke test uit de brief is nooit afgevinkt. Open vragen die daarbij horen: landt de resume-mail bij Gmail, Outlook én ciiic.nl in de inbox (niet in spam), en klopt de `/data`-volume-mount op de Coolify-app zodat de SQLite niet bij elke redeploy leegloopt.
-
-Brief (afgerond, als naslag): `done/draft-resume-endpoints.md`.
-
-Klaar als: `https://bot.ciiic.nl/health` toont `drafts.success: true` met een count die na een testsave met één omhoog gaat, en een testmail is in drie inboxen aangekomen; bevindingen in één regel in `done/register.md`.
-
 ### 2. De uitgezette Radar-bronnen beslissen
 
 **[workhorse] [delegeerbaar]** Zes bronnen hangen achter een `RADAR_ENABLE_*`-vlag (`immersivewire`, `springer-vr`, `nature-heritage`, `eurekalert`, `uploadvr`) en staan daarmee de facto uit. De recon zegt waarom: Springer en Nature blokkeren server-side fetch (`reference/radar-fase2-recon-2026-07-09.md`). Dat is een besluit dat niemand genomen heeft, geen configuratie.
@@ -28,8 +20,17 @@ Klaar als: elke vlag is óf in de Coolify-env van `relaybot` gezet, óf de bron 
 
 Klaar als: afzonderlijk geautoriseerde activatie bewijst de hele DOI-keten en geplande reconciliation; consumercontracten zijn geleverd. Een baseline-import, cutover of echte verzending blijft een apart besluit op een concreet gecontroleerd diff.
 
+### 6. Brevo-mail uit de bot strandt bij ontvangers die SpamCop gebruiken
+
+**[workhorse] [beslissing Jaap]** De smoke test van 6 oktober (#1) vond twee dingen in de Brevo-transactiemail, die álle botmail raken (draft-resume, eventbevestigingen). (a) Het gedeelde Brevo-IP `77.32.148.23` stond op SpamCop; mailbox.org weigerde de mail aan jaap@jaapstronks.nl met `554 5.7.1 ... blocked by RBL` (softBounce in de Brevo-eventlog), terwijl Gmail en M365 hem wel afleverden. `POST /draft/save` geeft dan gewoon `ok: true` terug: de gebruiker wacht op een mail die nooit komt. (b) Brevo-clicktracking herschrijft de magic link naar `sendibt3.com`, dus de geheime draft-token gaat via Brevo's tracker.
+
+Goed gedaan: Jaap kiest per punt. (a) afwachten en hertesten (SpamCop-listings verlopen vanzelf), een dedicated IP bij Brevo, of de bot via een andere verzender; (b) clicktracking voor transactiemail uitzetten in het Brevo-account (raakt ook de statistiek van andere botmails) of per mail een opt-out als Brevo die ondersteunt.
+
+Klaar als: per punt een besluit in `done/decisions.md`, en een hertest naar een mailbox.org-adres staat als `delivered` in de Brevo-eventlog.
+
 ## Recently done
 
+- 2026-10-06, #1 draft-resume in productie gerookt: `/data`-mount bestaat, save → mail → link → `GET /draft/:token` werkt; deliverability-bevinding werd #6. Write-up `done/2026-10.md`.
 - 2026-10-06, PR #2 — #4 consentvoorbereiding: provideradapter, versleuteld register, reconciliation/preflight en getekende Forms-ingress, alles achter `CIIIC_CONSENT_ROUTE` (default uit = oud gedrag). Activatie is #5. Write-up `done/2026-10.md`.
 - 2026-10-06, PR #2 — #3 regressietests: `npm test` met 46 tests over signing, register, migratie en routewiring; CI Node 20/22.
 - 2026-09 — Draft-resume endpoints voor publicvalues.ciiic.nl (brief afgerond, zie `done/register.md`)
