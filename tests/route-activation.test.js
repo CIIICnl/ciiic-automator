@@ -31,13 +31,18 @@ const consentEnv = ['CIIIC_CONSENT_ROUTE', 'CIIIC_OPTIN_WEBHOOK_SECRET', 'CONSEN
 const saved = Object.fromEntries(consentEnv.map(key => [key, process.env[key]]));
 for (const key of consentEnv) delete process.env[key];
 
+// Same environment locally and in CI: no repo .env, and the OpenAI client in
+// src/services/openai.js only needs a key to construct at import.
+const savedRuntime = { DOTENV_CONFIG_PATH: process.env.DOTENV_CONFIG_PATH, OPENAI_API_KEY: process.env.OPENAI_API_KEY };
+process.env.DOTENV_CONFIG_PATH = new URL('./route-activation.no-env', import.meta.url).pathname;
+process.env.OPENAI_API_KEY ||= 'synthetic-unused';
 const { app } = await import('../src/index.js');
 const server = await new Promise(resolve => {
   const instance = app.listen(0, '127.0.0.1', () => resolve(instance));
 });
 test.after(async () => {
   await new Promise(resolve => server.close(resolve));
-  for (const [key, value] of Object.entries(saved)) {
+  for (const [key, value] of Object.entries({ ...saved, ...savedRuntime })) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
   }
