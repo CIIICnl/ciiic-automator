@@ -65,7 +65,7 @@ Deze commando's verwachten de genoemde secrets al in de procesomgeving. Het evid
 node scripts/consent-reconcile.mjs
 ```
 
-De eerste volledige scan neemt suppressies over en legt een voorkeurcheckpoint vast. Alleen een werkelijk gewijzigde bronvoorkeur tussen twee scans kan daarna een voorkeur-event opleveren. Mailchimp `last_changed` kan ook door een naamswijziging veranderen en is daarom geen zelfstandig taalbewijs. Gelijktijdige wijzigingen vanuit Brevo leveren een zichtbaar conflict op. Reconciliation bevestigt nooit zelf toestemming en activeert geen providercontacten. De delta vanaf T0 gebruikt lokale ontvangsttijd, zodat een vertraagde oude afmelding niet verdwijnt.
+Initialiseer de runner vóór T0. De eerste volledige scan neemt suppressies over en legt een voorkeurcheckpoint vast. Begint deze pas na T0, dan kunnen tussentijdse taalwijzigingen niet betrouwbaar worden afgeleid en is handmatige bronvergelijking nodig. Alleen een werkelijk gewijzigde bronvoorkeur tussen twee scans kan daarna een voorkeur-event opleveren. Mailchimp `last_changed` kan ook door een naamswijziging veranderen en is daarom geen zelfstandig taalbewijs. Gelijktijdige wijzigingen vanuit Brevo leveren een zichtbaar conflict op. Reconciliation bevestigt nooit zelf toestemming en activeert geen providercontacten. De delta vanaf T0 gebruikt lokale ontvangsttijd, zodat een vertraagde oude afmelding niet verdwijnt.
 
 ## Baseline-import en rollback
 

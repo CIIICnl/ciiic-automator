@@ -17,7 +17,7 @@ Bron: meta-briefing `2026-10-06--from-jaap-work--to-ciiic-automator--brevo-conse
 | Migratiepreflight/read-back | Synthetische statusmatrix, deterministische volgorde, suppressies eerst, dubbele identiteit, taalconflict en ontbreken van bewijs; read-back controleert lijst/taal/suppressies |
 | Owner/listbinding | Live GETs op Coolify en Mailchimp: jaarevent `0e404ef800`, CIIIC `67fe159b9d`, beide company `CIIIC`; alleen niet-persoonlijke bindingsgegevens bewaard |
 
-`npm test`: 31 tests geslaagd, nul mislukt. `git diff --check`: schoon. Gitleaks over staged wijzigingen: geen secrets. GitHub Actions is toegevoegd voor Node20 en Node22; CI-resultaat staat op de PR.
+`npm test`: 31 tests geslaagd, nul mislukt. `git diff --check`: schoon. Gitleaks over staged wijzigingen: geen secrets. GitHub Actions voor Node20 en Node22 is groen op PR2 (run `37458009197`).
 
 Mutatiecontrole: in een geïsoleerde tijdelijke kopie is alleen `jaarevent.verifySignature` vervangen door altijd-waar. `npm test` faalde precies op `existing Jaarevent status HMAC verifies the literal raw body` (toen 29 geslaagd, 1 gefaald). De tijdelijke kopie is verwijderd; de werkboom bleef ongewijzigd. Dit dekt tevens de minimale klaar-als van TODO3; sluiten pas na review/merge.
 

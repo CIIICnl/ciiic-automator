@@ -4,7 +4,7 @@ Leeswijzer in het kort (volledig: skill `werkwijze`): _In progress_ is een claim
 
 ## In progress
 
-- #4 Brevo-consentvoorbereiding - @mac - `feat/brevo-consent-preparation` - klaar als: synthetische acceptatiematrix groen en PR met flagship-reviewoverdracht.
+_(leeg)_
 
 ## Open werk
 
@@ -32,7 +32,13 @@ Klaar als: `npm test` draait en faalt op een moedwillig gebroken signature-check
 
 **[flagship-review] [delegeerbaar]** (toestemming, auth en migratie). Drie writers kunnen zonder gedeeld register uiteenlopen; afmelden moet afmelden blijven en iedere actieve ontvanger krijgt één taal. Goed gedaan: één provideradapter, duurzaam suppressieregister en controleerbare migratievoorbereiding volgens [de uitvoeringsbrief](briefs/brevo-consent-preparation.md).
 
-Bron: `2026-10-06--from-jaap-work--to-ciiic-automator--brevo-consent-en-migratievoorbereiding.md`. Klaar als: synthetische statusmatrix, callback-auth/retry, DOI-limiet en deterministische dry-run slagen; owner/listbinding live geverifieerd; PR met bewijs gereviewd. Import, accountinrichting, cutover en verzending vragen afzonderlijk mandaat.
+Uitvoering: [PR #2](https://github.com/CIIICnl/ciiic-automator/pull/2), wacht op flagship-review. Bron: `2026-10-06--from-jaap-work--to-ciiic-automator--brevo-consent-en-migratievoorbereiding.md`. Klaar als: synthetische statusmatrix, callback-auth/retry, DOI-limiet en deterministische dry-run slagen; owner/listbinding live geverifieerd; PR met bewijs gereviewd. Import, accountinrichting, cutover en verzending vragen afzonderlijk mandaat.
+
+### 5. Brevo-productiegebruik mist nog geverifieerd bevestigingsbewijs en consumerkoppelingen
+
+**[flagship-review]** (toestemming en migratie; apart uitvoeringsmandaat). De voorbereiding van #4 bevestigt geen DOI zonder autoritatief bewijs. Goed gedaan: werkende, bewezen koppeling van echte providerbevestiging naar het register, getekende Forms-feeds, duurzame registerconfiguratie, reconciliation vóór T0 en nieuwsbriefboekhouding. [Runbook](../reference/ciiic-consent-preparation.md) beschrijft de poorten.
+
+Klaar als: afzonderlijk geautoriseerde activatie bewijst de hele DOI-keten en geplande reconciliation; consumercontracten zijn geleverd. Een baseline-import, cutover of echte verzending blijft een apart besluit op een concreet gecontroleerd diff.
 
 ## Recently done
 
