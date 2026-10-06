@@ -1,26 +1,27 @@
-# Review-en-merge: PR #2 consentvoorbereiding (na R3-herstel)
+# Uitvoer: TODO 1, draft-resume in productie roken
 
-Rol: stuur. Tier: `flagship-review` (toestemming, auth en migratie): het flagship reviewt en merget, niet de workhorse.
+Rol: uitvoer. Tier: `workhorse`.
 
 ## Stand bij vertrek
 
-6 oktober 2026, Opus (uitvoer): R3 uit [de herreview](../reports/brevo-consent-rereview-2026-10-06.md) hersteld op `feat/brevo-consent-preparation` in `7a52703` + `e42da0e`. De consentroute staat nu achter `CIIIC_CONSENT_ROUTE`: alleen de exacte waarde `enabled` zet hem aan; ongezet draaien newsletter-optin, SXSW en registration het gedrag van vóór de PR, dus live Form43/feed7 blijft na merge werken. Met de schakelaar aan: geen unsigned fallback. `src/index.js` exporteert `app` en boot alleen als entrypoint. Nieuwe `tests/route-activation.test.js` draait de echte app met de live feed7-vorm (veld5 aangevinkt en leeg) en beide schakelaarstanden; uitgaand HTTPS via recorder. 46 tests groen, ook in schone omgeving; CI Node20/22 groen (run 37509389826). R1/R2-herstel onaangeroerd. Geen productie-GETs of -wijzigingen in deze ronde. Main en productie ongewijzigd.
+6 oktober 2026, Fable (stuur): PR #2 (consentvoorbereiding) gereviewd als flagship-review en gemerged als `5350d42`; Coolify `relaybot` heeft automatisch gedeployd, `/health` healthy, nieuwe image bewezen live. De consentroute staat achter `CIIIC_CONSENT_ROUTE` en die variabele ontbreekt in productie, dus Form43/feed7 en de overige aanmeldroutes draaien het oude gedrag. TODO 3 en 4 zijn gesloten, de oorspronkelijke briefing is met bewijs geleverd. Write-up: `docs/plans/done/2026-10.md`. Open: TODO 1, 2 en 5.
 
 ## Opdracht
 
-1. Review [PR #2](https://github.com/CIIICnl/ciiic-automator/pull/2) als onafhankelijke flagship-review, met nadruk op de R3-diff (`efecad7..HEAD`): `src/services/consent/activation.js`, de routewiring in `src/index.js`, de legacy-paden in `newsletter-optin.js`, `sxsw.js` en `jaarevent.js` (`addIfMissing` is teruggezet als oud gedrag, alleen bij uitgezette schakelaar), en `tests/route-activation.test.js`. Toets tegen de herstelcriteria in R3 en de defaulttabel in `docs/reference/ciiic-consent-preparation.md` § Activatieschakelaar.
-2. Live hercontrole vóór merge, alleen GETs (skill `ciiic-coolify`): `CIIIC_CONSENT_ROUTE` staat niet in de env van Coolify-app `relaybot` (`m7z1z547ie42j0d60fy0tvxx`); Form43/feed7 heeft nog de vorm uit R3. Wijkt iets af: niet mergen, bevinding in een reviewrapport.
-3. Akkoord → merge naar `main` (auto-deploy), check `https://bot.ciiic.nl/health`. Draai daarna `merge-housekeeping`: TODO3 en TODO4 sluiten, oorspronkelijke briefing `2026-10-06--from-jaap-work--to-ciiic-automator--brevo-consent-en-migratievoorbereiding.md` sluiten met bewijs (`briefings.sh evidence` + `close --outcome delivered`). Niet akkoord → reviewrapport in `docs/reports/`, PR open, herstelhandoff.
-4. TODO5 blijft afzonderlijk activatiewerk; de schakelaar niet aanzetten, geen productieconfiguratie, import, cutover of verzending vanuit dit mandaat. Oude proefregisters blijven ongeschikt. Log de sessie en behoud het doorgeefblok.
-5. Overschrijf deze handoff met de volgende opdracht (bij merge: TODO1 uit het doorgeefblok), neem deze overschrijf-plicht weer op en sluit af met de bijbehorende sluitregel.
+1. Lees `docs/plans/TODO.md` § 1 en `docs/plans/done/draft-resume-endpoints.md` (de brief met de smoke test die nooit is afgevinkt). Gebruik skill `ciiic-coolify` voor de API; alleen GETs tegen Coolify.
+2. Controleer `https://bot.ciiic.nl/health`: wat zegt het `drafts`-blok nu? Lokaal faalt de drafts-DB omdat `/data` ontbreekt; in productie moet een persistente `/data`-mount op Coolify-app `relaybot` (`m7z1z547ie42j0d60fy0tvxx`) bestaan. Lees de app-detail en storages via de API; ontbreekt de mount, dan is dat de hoofdbevinding en zet je hem niet zelf aan: schrijf op wat er moet gebeuren en leg het bij Jaap.
+3. Bestaat de mount: één testsave via `POST /draft/save` met een testadres, controleer dat de count in `/health` met één omhoog gaat en dat de resume-mail in een Gmail-, Outlook- en ciiic.nl-inbox aankomt (niet in spam). Echte testverzending alleen naar adressen van Jaap; geen echte deelnemersdata.
+4. Fix nodig (mount, mailtemplate, spamscore): op een branch met eigen PR, niet direct op `main` (elke push naar `main` deployt). Bevindingen in één regel in `docs/plans/done/register.md`; de `[STALE-PLAN]` in `_reconcile/drift-log.md` over TODO 1 mag dan weg.
+5. Niets aan `CIIIC_CONSENT_ROUTE` of andere consentconfiguratie doen; dat is TODO 5 met eigen mandaat. Log de sessie en behoud het doorgeefblok.
+6. Overschrijf deze handoff met de volgende opdracht (TODO 2 of de review-en-merge van je eigen PR), neem deze overschrijf-plicht weer op en sluit af met de bijbehorende sluitregel.
 
 ## Doorgeefblok: bestaande opdrachten behouden
 
-TODO1, draft-resume in productie roken, is nog niet uitgevoerd. Controleer na acceptatie van PR2 `https://bot.ciiic.nl/health` op `drafts.success: true`, één testsave met count +1, resume-mail in inbox bij Gmail/Outlook/ciiic.nl en de persistente `/data`-mount op Coolify `relaybot`. Lees `docs/plans/done/draft-resume-endpoints.md`; gebruik skill `ciiic-coolify`. Eventuele fix op branch met eigen PR; bij succes bevinding in `done/register.md`. Stem echte testverzending af op het mandaat van die sessie.
+TODO 2, uitgezette Radar-bronnen beslissen, is een beslisronde met Jaap: per `RADAR_ENABLE_*`-vlag aan in Coolify-env of de bron uit `src/services/radar/config.js`, besluit in `done/decisions.md`.
 
-TODO2, uitgezette Radar-bronnen beslissen, wacht daarna op een beslisronde. TODO5 vraagt afzonderlijk activatiemandaat en concrete acceptatie: autoritatieve DOI-bevestiging, CIIIC-signing-/registerconfiguratie, getekende Form43-feed, reconciliation vóór T0 en nieuwsbriefboekhouding; pas dan `CIIIC_CONSENT_ROUTE=enabled`. Geen productieconfiguratie, import, cutover of verzending afleiden uit deze codevoorbereiding.
+TODO 5 vraagt afzonderlijk activatiemandaat en concrete acceptatie: autoritatieve DOI-bevestiging, CIIIC-signing-/registerconfiguratie, getekende Form43-feed7 (nu ongetekend, POST JSON naar `list=ciiic`), reconciliation vóór T0 en nieuwsbriefboekhouding; pas dan `CIIIC_CONSENT_ROUTE=enabled`. Geen productieconfiguratie, import, cutover of verzending afleiden uit de gemergde voorbereiding. Oude proefregisters blijven ongeschikt.
 
-De contractbriefings `2026-10-06--from-ciiic-automator--to-forms--ciiic-optin-signature-contract.md` en `2026-10-06--from-ciiic-automator--to-ciiic-nieuwsbrief--editieboekhouding-consent-contract.md` blijven voorbereidingsopdrachten zonder activatiemandaat. De hubbriefing over Form43 (`2026-10-06--from-ciiic-automator--to-jaap-work--form43-actieve-ciiic-feed-blokkeert-consent-deploy.md`) blijft staan: de deploy is niet meer geblokkeerd, maar de feed moet bij activatie alsnog getekend worden.
+De contractbriefings `2026-10-06--from-ciiic-automator--to-forms--ciiic-optin-signature-contract.md` en `2026-10-06--from-ciiic-automator--to-ciiic-nieuwsbrief--editieboekhouding-consent-contract.md` blijven voorbereidingsopdrachten zonder activatiemandaat. De hubbriefing `2026-10-06--from-ciiic-automator--to-jaap-work--form43-actieve-ciiic-feed-blokkeert-consent-deploy.md` blijft staan: de deploy is niet meer geblokkeerd, maar de feed moet bij activatie alsnog getekend worden.
 
 ## Extra van Jaap
 

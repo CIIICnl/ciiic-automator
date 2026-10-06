@@ -10,7 +10,7 @@ _(leeg)_
 
 ### 1. Draft-resume in productie roken
 
-**[delegeerbaar]** De endpoints staan live (`POST /draft/save`, `GET /draft/:token`), maar de smoke test uit de brief is nooit afgevinkt. Open vragen die daarbij horen: landt de resume-mail bij Gmail, Outlook én ciiic.nl in de inbox (niet in spam), en klopt de `/data`-volume-mount op de Coolify-app zodat de SQLite niet bij elke redeploy leegloopt.
+**[workhorse] [delegeerbaar]** De endpoints staan live (`POST /draft/save`, `GET /draft/:token`), maar de smoke test uit de brief is nooit afgevinkt. Open vragen die daarbij horen: landt de resume-mail bij Gmail, Outlook én ciiic.nl in de inbox (niet in spam), en klopt de `/data`-volume-mount op de Coolify-app zodat de SQLite niet bij elke redeploy leegloopt.
 
 Brief (afgerond, als naslag): `done/draft-resume-endpoints.md`.
 
@@ -18,21 +18,9 @@ Klaar als: `https://bot.ciiic.nl/health` toont `drafts.success: true` met een co
 
 ### 2. De uitgezette Radar-bronnen beslissen
 
-**[delegeerbaar]** Zes bronnen hangen achter een `RADAR_ENABLE_*`-vlag (`immersivewire`, `springer-vr`, `nature-heritage`, `eurekalert`, `uploadvr`) en staan daarmee de facto uit. De recon zegt waarom: Springer en Nature blokkeren server-side fetch (`reference/radar-fase2-recon-2026-07-09.md`). Dat is een besluit dat niemand genomen heeft, geen configuratie.
+**[workhorse] [delegeerbaar]** Zes bronnen hangen achter een `RADAR_ENABLE_*`-vlag (`immersivewire`, `springer-vr`, `nature-heritage`, `eurekalert`, `uploadvr`) en staan daarmee de facto uit. De recon zegt waarom: Springer en Nature blokkeren server-side fetch (`reference/radar-fase2-recon-2026-07-09.md`). Dat is een besluit dat niemand genomen heeft, geen configuratie.
 
 Klaar als: elke vlag is óf in de Coolify-env van `relaybot` gezet, óf de bron is uit `src/services/radar/config.js` verwijderd; het besluit per bron staat in één regel in `done/decisions.md`.
-
-### 3. Kritieke routes missen een vaste regressietest
-
-Op `main` heeft `package.json` alleen `start` en `dev`. De repo draagt inmiddels een HMAC-geverifieerde webhook, een rate-limited draft-store en een radar-pipeline met zeven bronparsers — alle drie stil kapot te krijgen. Een minimale node:test-suite over de pure stukken (signature-verificatie, token-validatie, dedup) is goedkoper dan de eerste keer dat het misgaat.
-
-Klaar als: `npm test` draait en faalt op een moedwillig gebroken signature-check. De uitvoering van #4 neemt deze minimale testbasis mee; pas na review en merge dit item sluiten.
-
-### 4. CIIIC-inschrijfpaden delen nog geen toestemming- en taalcontract
-
-**[flagship-review] [delegeerbaar]** (toestemming, auth en migratie). Drie writers kunnen zonder gedeeld register uiteenlopen; afmelden moet afmelden blijven en iedere actieve ontvanger krijgt één taal. Goed gedaan: één provideradapter, duurzaam suppressieregister en controleerbare migratievoorbereiding volgens [de uitvoeringsbrief](briefs/brevo-consent-preparation.md).
-
-Uitvoering: [PR #2](https://github.com/CIIICnl/ciiic-automator/pull/2), **R1/R2 geaccepteerd, R3 hersteld (6 okt), wacht op flagship-review**. R3: live Form43 stuurt ongetekend naar `list=ciiic` zonder sleutels in productie; nu achter schakelaar `CIIIC_CONSENT_ROUTE` (default uit = oud gedrag), wiring getest in `tests/route-activation.test.js`. [Review en herstelcriteria R3](../reports/brevo-consent-rereview-2026-10-06.md). Bron: `2026-10-06--from-jaap-work--to-ciiic-automator--brevo-consent-en-migratievoorbereiding.md`. Klaar als: R3 opgelost en routewiring getest tegen de live configuratievorm; synthetische matrix en CI groen; actuele feed-/env-controle bewijst veilige deploy; onafhankelijke flagship-review accepteert. Import, accountinrichting, cutover en verzending blijven afzonderlijk mandaat.
 
 ### 5. Brevo-productiegebruik mist nog geverifieerd bevestigingsbewijs en consumerkoppelingen
 
@@ -42,6 +30,8 @@ Klaar als: afzonderlijk geautoriseerde activatie bewijst de hele DOI-keten en ge
 
 ## Recently done
 
+- 2026-10-06, PR #2 — #4 consentvoorbereiding: provideradapter, versleuteld register, reconciliation/preflight en getekende Forms-ingress, alles achter `CIIIC_CONSENT_ROUTE` (default uit = oud gedrag). Activatie is #5. Write-up `done/2026-10.md`.
+- 2026-10-06, PR #2 — #3 regressietests: `npm test` met 46 tests over signing, register, migratie en routewiring; CI Node 20/22.
 - 2026-09 — Draft-resume endpoints voor publicvalues.ciiic.nl (brief afgerond, zie `done/register.md`)
 - 2026-09 — HMAC-signature op `/webhook/registration-status` (`ca39d36`)
 - 2026-09 — Generieke newsletter-opt-in webhook voor Gravity Forms (`b86cabf`)

@@ -21,7 +21,7 @@ Met de schakelaar aan loopt de CIIIC-opt-in uit Jaarevent (form13), SXSW (26/27)
 
 Jaarevent-statuswijzigingen patchen uitsluitend bestaande leden van de eventlijst; een ontbrekend eventlid wordt niet automatisch als abonnee aangemaakt. Nieuwsbriefopt-in gaat afzonderlijk naar CIIIC. IX Labs blijft buiten deze migratie en behoudt zijn bestaande route. Afmelden voor een event is geen nieuwsbriefafmelding.
 
-Live GET-controle, 6 oktober 2026: Coolify `relaybot` (`m7z1z547ie42j0d60fy0tvxx`) gebruikt `MAILCHIMP_JAAREVENT_LIST_ID=0e404ef800`; `MAILCHIMP_CIIIC_LIST_ID` ontbreekt. Mailchimp bevestigt `0e404ef800` als `CIIIC jaarevent`, company `CIIIC`, en `67fe159b9d` als `CIIIC`, company `CIIIC`. De foutieve event-code-default is gecorrigeerd. De volledige controle staat in `docs/plans/briefs/brevo-consent-preparation.md`.
+Live GET-controle, 6 oktober 2026: Coolify `relaybot` (`m7z1z547ie42j0d60fy0tvxx`) gebruikt `MAILCHIMP_JAAREVENT_LIST_ID=0e404ef800`; `MAILCHIMP_CIIIC_LIST_ID` ontbreekt. Mailchimp bevestigt `0e404ef800` als `CIIIC jaarevent`, company `CIIIC`, en `67fe159b9d` als `CIIIC`, company `CIIIC`. De foutieve event-code-default is gecorrigeerd. De volledige controle staat in `docs/plans/done/brevo-consent-preparation.md`.
 
 ## Configuratie vóór productiegebruik
 
