@@ -1,5 +1,7 @@
 import 'dotenv/config';
 import { timingSafeEqual } from 'node:crypto';
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
@@ -9,6 +11,10 @@ import { sendEventConfirmation, sendNewsletterItemConfirmation, sendErrorNotific
 import { processRegistration, processStatusChange, processCheckin, verifySignature, isWebhookSecretConfigured } from './services/jaarevent.js';
 import { processSxswSubmission } from './services/sxsw.js';
 import { processNewsletterOptin } from './services/newsletter-optin.js';
+import { targetsCiiicAudience } from './services/newsletter-optin.js';
+import { hasFieldValue, requireCiiicOptinSignature, subscriptionHttpStatus } from './services/consent/ingress.js';
+import { createMarketingRouter } from './services/consent/callbacks.js';
+import { consentRouteEnabled } from './services/consent/activation.js';
 import { initDraftsDb, saveDraft, getDraft, deleteDraft, purgeExpired, healthCheck as draftsHealth } from './services/drafts.js';
 import { createTicket, testConnection as testIntake, TICKET_TYPES, TICKET_SYSTEMS, TICKET_PRIORITIES } from './services/intake.js';
 import { runRadarScan, startRadarScheduler, radarHealth } from './services/radar/index.js';
@@ -27,6 +33,7 @@ app.use(express.json({
   verify: (req, _res, buf) => { req.rawBody = buf; },
 }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use('/webhook/marketing', createMarketingRouter());
 
 // Health check endpoint
 app.get('/', (req, res) => {
@@ -837,13 +844,20 @@ ${parsedData.url ? `URL: ${parsedData.url}` : ''}`.trim();
  */
 app.post('/webhook/registration', async (req, res) => {
   console.log('📝 Received registration webhook');
+  const consentRoute = consentRouteEnabled();
+  const carriesOptin = consentRoute && hasFieldValue(req.body, '19');
+  if (carriesOptin) {
+    const verified = requireCiiicOptinSignature(req, res, () => true);
+    if (verified !== true) return;
+  }
   try {
-    const result = await processRegistration(req.body);
-    console.log('✅ Registration processed:', JSON.stringify(result));
-    res.json({ success: true, ...result });
+    const result = await processRegistration(req.body, { authenticated: carriesOptin, consentRoute });
+    console.log('Registration processed');
+    const status = result.newsletterError ? 503 : subscriptionHttpStatus(result.newsletter || { status: 'event_only' });
+    res.status(status).json({ success: status === 200, ...result });
   } catch (err) {
-    console.error('❌ Registration error:', err.message);
-    res.status(400).json({ error: err.message });
+    console.error('Registration error:', err.name);
+    res.status(400).json({ error: 'Invalid registration' });
   }
 });
 
@@ -871,7 +885,7 @@ app.post('/webhook/registration-status', async (req, res) => {
 
   try {
     const result = await processStatusChange(req.body);
-    console.log('✅ Status change processed:', JSON.stringify(result));
+    console.log('Status change processed');
     res.json({ success: true, ...result });
   } catch (err) {
     console.error('❌ Status change error:', err.message);
@@ -885,13 +899,23 @@ app.post('/webhook/registration-status', async (req, res) => {
  */
 app.post('/webhook/sxsw-newsletter', async (req, res) => {
   console.log('📝 Received SXSW webhook');
+  const formId = String(req.body?.form_id || req.body?.formId || '');
+  const fieldId = formId === '26' ? '9' : formId === '27' ? '11' : null;
+  const consentRoute = consentRouteEnabled();
+  const carriesOptin = consentRoute && hasFieldValue(req.body, fieldId);
+  if (carriesOptin) {
+    const verified = requireCiiicOptinSignature(req, res, () => true);
+    if (verified !== true) return;
+  }
   try {
-    const result = await processSxswSubmission(req.body);
-    console.log('✅ SXSW processed:', JSON.stringify(result));
-    res.json({ success: true, ...result });
+    const result = await processSxswSubmission(req.body, { authenticated: carriesOptin, consentRoute });
+    console.log('SXSW processed');
+    const status = !consentRoute || result.skipped ? 200 : subscriptionHttpStatus(result);
+    res.status(status).json({ success: status === 200, ...result });
   } catch (err) {
-    console.error('❌ SXSW error:', err.message);
-    res.status(400).json({ error: err.message });
+    console.error('SXSW error:', err.name);
+    if (!consentRoute) return res.status(400).json({ error: err.message });
+    res.status(err.message === 'Unauthenticated CIIIC opt-in' || err.message.startsWith('Unknown SXSW form id') ? 400 : 503).json({ error: 'SXSW opt-in failed' });
   }
 });
 
@@ -902,13 +926,20 @@ app.post('/webhook/sxsw-newsletter', async (req, res) => {
  */
 app.post('/webhook/newsletter-optin', async (req, res) => {
   console.log('📝 Received newsletter opt-in webhook');
+  const consentRoute = consentRouteEnabled();
+  const ciiic = consentRoute && targetsCiiicAudience(req.query);
+  if (ciiic) {
+    const verified = requireCiiicOptinSignature(req, res, () => true);
+    if (verified !== true) return;
+  }
   try {
-    const result = await processNewsletterOptin(req.query, req.body);
-    console.log('✅ Newsletter opt-in processed:', JSON.stringify(result));
-    res.json({ success: true, ...result });
+    const result = await processNewsletterOptin(req.query, req.body, { authenticated: ciiic, consentRoute });
+    console.log('Newsletter opt-in processed');
+    const status = subscriptionHttpStatus(ciiic && !result.skipped ? result : { status: 'skipped' });
+    res.status(status).json({ success: status === 200, ...result });
   } catch (err) {
-    console.error('❌ Newsletter opt-in error:', err.message);
-    res.status(400).json({ error: err.message });
+    console.error('Newsletter opt-in error:', ciiic ? err.name : err.message);
+    res.status(ciiic ? 503 : 400).json({ error: ciiic ? 'Newsletter opt-in failed' : err.message });
   }
 });
 
@@ -927,37 +958,44 @@ app.post('/webhook/checkin', async (req, res) => {
   }
 });
 
-// Initialise drafts store + schedule purge
-try {
-  const { dbPath } = initDraftsDb();
-  const removed = purgeExpired();
-  console.log(`💾 Drafts DB ready at ${dbPath} (purged ${removed} expired on boot)`);
-  setInterval(() => {
-    try {
-      const n = purgeExpired();
-      if (n > 0) console.log(`🧹 Purged ${n} expired drafts`);
-    } catch (error) {
-      console.error('❌ Drafts purge failed:', error.message);
-    }
-  }, 6 * 60 * 60 * 1000);
-} catch (error) {
-  console.error('❌ Failed to initialise drafts DB:', error.message);
-}
+// Boot only when run as the entrypoint (`node src/index.js`), so tests can
+// import the app and exercise the real route wiring without side effects.
+const isEntrypoint = process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 
-// Radar signals — daily scan of the source allowlist → monitor ingest endpoint.
-if (process.env.RADAR_INGEST_SECRET) {
+export { app };
+
+if (isEntrypoint) {
+  // Initialise drafts store + schedule purge
   try {
-    startRadarScheduler();
+    const { dbPath } = initDraftsDb();
+    const removed = purgeExpired();
+    console.log(`💾 Drafts DB ready at ${dbPath} (purged ${removed} expired on boot)`);
+    setInterval(() => {
+      try {
+        const n = purgeExpired();
+        if (n > 0) console.log(`🧹 Purged ${n} expired drafts`);
+      } catch (error) {
+        console.error('❌ Drafts purge failed:', error.message);
+      }
+    }, 6 * 60 * 60 * 1000);
   } catch (error) {
-    console.error('❌ Failed to start radar scheduler:', error.message);
+    console.error('❌ Failed to initialise drafts DB:', error.message);
   }
-} else {
-  console.log('📡 Radar scheduler disabled (RADAR_INGEST_SECRET not set)');
-}
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`
+  // Radar signals — daily scan of the source allowlist → monitor ingest endpoint.
+  if (process.env.RADAR_INGEST_SECRET) {
+    try {
+      startRadarScheduler();
+    } catch (error) {
+      console.error('❌ Failed to start radar scheduler:', error.message);
+    }
+  } else {
+    console.log('📡 Radar scheduler disabled (RADAR_INGEST_SECRET not set)');
+  }
+
+  // Start server
+  app.listen(PORT, () => {
+    console.log(`
 🚀 CIIIC Event Automator running on port ${PORT}
 
 Endpoints:
@@ -978,4 +1016,5 @@ Email routing (all send Zapier notifications):
 Configure your email service to POST all *@bot.ciiic.nl to:
   https://bot.ciiic.nl/webhook/email
 `);
-});
+  });
+}

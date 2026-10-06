@@ -22,11 +22,23 @@ Klaar als: `https://bot.ciiic.nl/health` toont `drafts.success: true` met een co
 
 Klaar als: elke vlag is óf in de Coolify-env van `relaybot` gezet, óf de bron is uit `src/services/radar/config.js` verwijderd; het besluit per bron staat in één regel in `done/decisions.md`.
 
-### 3. Geen enkele geautomatiseerde test
+### 3. Kritieke routes missen een vaste regressietest
 
-`package.json` heeft alleen `start` en `dev`. De repo draagt inmiddels een HMAC-geverifieerde webhook, een rate-limited draft-store en een radar-pipeline met zeven bronparsers — alle drie stil kapot te krijgen. Een minimale node:test-suite over de pure stukken (signature-verificatie, token-validatie, dedup) is goedkoper dan de eerste keer dat het misgaat.
+Op `main` heeft `package.json` alleen `start` en `dev`. De repo draagt inmiddels een HMAC-geverifieerde webhook, een rate-limited draft-store en een radar-pipeline met zeven bronparsers — alle drie stil kapot te krijgen. Een minimale node:test-suite over de pure stukken (signature-verificatie, token-validatie, dedup) is goedkoper dan de eerste keer dat het misgaat.
 
-Klaar als: `npm test` draait en faalt op een moedwillig gebroken signature-check.
+Klaar als: `npm test` draait en faalt op een moedwillig gebroken signature-check. De uitvoering van #4 neemt deze minimale testbasis mee; pas na review en merge dit item sluiten.
+
+### 4. CIIIC-inschrijfpaden delen nog geen toestemming- en taalcontract
+
+**[flagship-review] [delegeerbaar]** (toestemming, auth en migratie). Drie writers kunnen zonder gedeeld register uiteenlopen; afmelden moet afmelden blijven en iedere actieve ontvanger krijgt één taal. Goed gedaan: één provideradapter, duurzaam suppressieregister en controleerbare migratievoorbereiding volgens [de uitvoeringsbrief](briefs/brevo-consent-preparation.md).
+
+Uitvoering: [PR #2](https://github.com/CIIICnl/ciiic-automator/pull/2), **R1/R2 geaccepteerd, R3 hersteld (6 okt), wacht op flagship-review**. R3: live Form43 stuurt ongetekend naar `list=ciiic` zonder sleutels in productie; nu achter schakelaar `CIIIC_CONSENT_ROUTE` (default uit = oud gedrag), wiring getest in `tests/route-activation.test.js`. [Review en herstelcriteria R3](../reports/brevo-consent-rereview-2026-10-06.md). Bron: `2026-10-06--from-jaap-work--to-ciiic-automator--brevo-consent-en-migratievoorbereiding.md`. Klaar als: R3 opgelost en routewiring getest tegen de live configuratievorm; synthetische matrix en CI groen; actuele feed-/env-controle bewijst veilige deploy; onafhankelijke flagship-review accepteert. Import, accountinrichting, cutover en verzending blijven afzonderlijk mandaat.
+
+### 5. Brevo-productiegebruik mist nog geverifieerd bevestigingsbewijs en consumerkoppelingen
+
+**[flagship-review]** (toestemming en migratie; apart uitvoeringsmandaat). De voorbereiding van #4 bevestigt geen DOI zonder autoritatief bewijs. Goed gedaan: werkende, bewezen koppeling van echte providerbevestiging naar het register, getekende Forms-feeds (ook de live Form43/feed7), daarna pas `CIIIC_CONSENT_ROUTE=enabled`, duurzame registerconfiguratie, reconciliation vóór T0 en nieuwsbriefboekhouding. [Runbook](../reference/ciiic-consent-preparation.md) beschrijft de poorten.
+
+Klaar als: afzonderlijk geautoriseerde activatie bewijst de hele DOI-keten en geplande reconciliation; consumercontracten zijn geleverd. Een baseline-import, cutover of echte verzending blijft een apart besluit op een concreet gecontroleerd diff.
 
 ## Recently done
 

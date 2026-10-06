@@ -11,10 +11,14 @@
 
 import https from 'https';
 import crypto from 'crypto';
+import { requestCiiicSubscription } from './consent/subscriber.js';
+import { hasFieldValue } from './consent/ingress.js';
+import { consentRouteEnabled } from './consent/activation.js';
 
 const MAILCHIMP_API_KEY = process.env.MAILCHIMP_API_KEY;
 const MAILCHIMP_DC = process.env.MAILCHIMP_DC || 'us11';
-const MAILCHIMP_LIST_ID = process.env.MAILCHIMP_JAAREVENT_LIST_ID || '67fe159b9d';
+const MAILCHIMP_LIST_ID = process.env.MAILCHIMP_JAAREVENT_LIST_ID || '0e404ef800';
+const CIIIC_LIST_ID = process.env.MAILCHIMP_CIIIC_LIST_ID || '67fe159b9d';
 
 const NOTION_SECRET = process.env.NOTION_SECRET;
 const NOTION_CONTACTEN_DS_IDS = (process.env.NOTION_CONTACTEN_DS_IDS || '20811fb08c9e80958d0d000bc8cad8c8,30411fb08c9e8051a530000ba6760e6a').split(',');
@@ -86,9 +90,15 @@ function apiRequest(url, options = {}) {
 
 /**
  * Update Mailchimp member's JAAREVENT merge field
- * If addIfMissing is true and member doesn't exist, subscribe them first
+ * Only patch existing event members. A registration is not newsletter consent.
+ * addIfMissing is the pre-consent behaviour, used only while the consent route
+ * is not enabled: an opted-in registrant absent from the event audience is
+ * added there as subscribed.
  */
-async function updateMailchimpStatus(email, status, { addIfMissing = false, firstName = '', lastName = '' } = {}) {
+export async function updateMailchimpStatus(email, status, { request = apiRequest, addIfMissing = false, firstName = '', lastName = '' } = {}) {
+  if (MAILCHIMP_LIST_ID.toLowerCase() === CIIIC_LIST_ID.toLowerCase()) {
+    throw new Error('Jaarevent and CIIIC marketing audiences must be separate');
+  }
   const emailHash = crypto.createHash('md5').update(email.toLowerCase().trim()).digest('hex');
   const auth = Buffer.from(`anystring:${MAILCHIMP_API_KEY}`).toString('base64');
   const headers = {
@@ -96,7 +106,7 @@ async function updateMailchimpStatus(email, status, { addIfMissing = false, firs
     'Content-Type': 'application/json',
   };
 
-  const result = await apiRequest(
+  const result = await request(
     `https://${MAILCHIMP_DC}.api.mailchimp.com/3.0/lists/${MAILCHIMP_LIST_ID}/members/${emailHash}`,
     {
       method: 'PATCH',
@@ -110,9 +120,7 @@ async function updateMailchimpStatus(email, status, { addIfMissing = false, firs
   if (result.status >= 400) {
     if (result.status === 404) {
       if (addIfMissing) {
-        // Subscribe the new member with JAAREVENT merge field
-        console.log(`📬 Member ${email} not in Mailchimp, adding as subscriber...`);
-        const addResult = await apiRequest(
+        const added = await request(
           `https://${MAILCHIMP_DC}.api.mailchimp.com/3.0/lists/${MAILCHIMP_LIST_ID}/members`,
           {
             method: 'POST',
@@ -120,31 +128,22 @@ async function updateMailchimpStatus(email, status, { addIfMissing = false, firs
             body: JSON.stringify({
               email_address: email.toLowerCase().trim(),
               status: 'subscribed',
-              merge_fields: {
-                FNAME: firstName,
-                LNAME: lastName,
-                JAAREVENT: status,
-              },
+              merge_fields: { FNAME: firstName, LNAME: lastName, JAAREVENT: status },
             }),
           }
         );
-
-        if (addResult.status >= 400) {
-          throw new Error(`Mailchimp add error ${addResult.status}: ${JSON.stringify(addResult.data)}`);
-        }
-
-        console.log(`✅ Mailchimp: ${email} added as subscriber with JAAREVENT=${status}`);
-        return addResult.data;
+        if (added.status >= 400) throw new Error(`Mailchimp event member add failed (${added.status})`);
+        console.log(`Jaarevent member added with JAAREVENT=${status}`);
+        return { added: true, status };
       }
-
-      console.log(`📬 Member ${email} not in Mailchimp, skipping (no opt-in)`);
+      console.log('Jaarevent member absent; event audience update skipped');
       return { skipped: true, reason: 'not_in_list' };
     }
-    throw new Error(`Mailchimp error ${result.status}: ${JSON.stringify(result.data)}`);
+    throw new Error(`Mailchimp event status update failed (${result.status})`);
   }
 
-  console.log(`✅ Mailchimp: ${email} → JAAREVENT=${status}`);
-  return result.data;
+  console.log(`Mailchimp Jaarevent status updated to ${status}`);
+  return { updated: true, status };
 }
 
 /**
@@ -183,7 +182,7 @@ async function updateNotionStatus(email, status) {
   }
 
   if (!pageId) {
-    console.log(`📋 Contact ${email} not found in Notion Contacten, skipping Notion update`);
+    console.log('Contact not found in Notion Contacten; event status update skipped');
     return { skipped: true, reason: 'not_in_notion' };
   }
 
@@ -204,10 +203,10 @@ async function updateNotionStatus(email, status) {
   );
 
   if (updateResult.status >= 400) {
-    throw new Error(`Notion error ${updateResult.status}: ${JSON.stringify(updateResult.data)}`);
+    throw new Error(`Notion event status update failed (${updateResult.status})`);
   }
 
-  console.log(`✅ Notion: ${email} (${pageId}) → jaarevent-2026=${status}`);
+  console.log(`Notion jaarevent-2026 updated to ${status}`);
   return { pageId, status };
 }
 
@@ -215,7 +214,7 @@ async function updateNotionStatus(email, status) {
  * Process a new registration from Gravity Forms webhook
  * GF sends form field values keyed by field ID
  */
-export async function processRegistration(body) {
+export async function processRegistration(body, { authenticated = false, consentRoute = consentRouteEnabled(), updateEvent = updateMailchimpStatus, updateNotion = updateNotionStatus, subscribe = requestCiiicSubscription } = {}) {
   // GF webhook payload: field values by ID
   // Field 1: First name, 9: Last name, 2: Email, 3: Organisation, 11: Job title
   // Field 19: Stay informed (checkbox) — opt-in for Mailchimp newsletter
@@ -223,33 +222,45 @@ export async function processRegistration(body) {
   const email = body['2'] || body.email;
   const firstName = body['1'] || body.first_name || '';
   const lastName = body['9'] || body.last_name || '';
-  const stayInformed = !!(body['19'] && body['19'].trim());
+  const stayInformed = hasFieldValue(body, '19');
 
   if (!email) {
     throw new Error('No email address in registration payload');
   }
+  if (consentRoute && stayInformed && !authenticated) throw new Error('Unauthenticated CIIIC opt-in');
 
-  console.log(`📝 Processing registration: ${firstName} ${lastName} <${email}> (opt-in: ${stayInformed})`);
+  console.log(`Processing Jaarevent registration; opt-in=${stayInformed}`);
 
-  const results = { email, firstName, lastName, stayInformed };
+  const results = { stayInformed };
 
-  // Update Mailchimp — only add new subscribers if they opted in
+  // Event status does not confer marketing consent or create an event member.
   try {
-    results.mailchimp = await updateMailchimpStatus(email, 'geregistreerd', {
-      addIfMissing: stayInformed,
-      firstName,
-      lastName,
-    });
+    results.mailchimp = consentRoute
+      ? await updateEvent(email, 'geregistreerd')
+      : await updateEvent(email, 'geregistreerd', { addIfMissing: stayInformed, firstName, lastName });
   } catch (err) {
-    console.error(`Mailchimp error for ${email}:`, err.message);
+    console.error('Mailchimp event update error:', err.message);
     results.mailchimpError = err.message;
+  }
+
+  if (consentRoute && stayInformed) {
+    try {
+      results.newsletter = await subscribe({
+        email, firstName, lastName, language: body.newsletter_language,
+        source: 'jaarevent-2026-registration',
+        consentEvidence: { kind: 'gravity-forms', signed: true, formId: '13', fieldId: '19', entryId: body.entry_id },
+      });
+    } catch (err) {
+      console.error('CIIIC newsletter opt-in failed:', err.name);
+      results.newsletterError = 'retryable';
+    }
   }
 
   // Update Notion
   try {
-    results.notion = await updateNotionStatus(email, 'geregistreerd');
+    results.notion = await updateNotion(email, 'geregistreerd');
   } catch (err) {
-    console.error(`Notion error for ${email}:`, err.message);
+    console.error('Notion event update error:', err.message);
     results.notionError = err.message;
   }
 
@@ -275,15 +286,15 @@ export async function processStatusChange(body) {
 
   const mappedStatus = statusMap[status.toLowerCase()] || status;
 
-  console.log(`🔄 Processing status change: ${email} → ${mappedStatus} (GF entry ${entry_id})`);
+  console.log(`Processing Jaarevent status change to ${mappedStatus}`);
 
-  const results = { email, status: mappedStatus, entry_id };
+  const results = { status: mappedStatus, entry_id };
 
   // Update Mailchimp
   try {
     results.mailchimp = await updateMailchimpStatus(email, mappedStatus);
   } catch (err) {
-    console.error(`Mailchimp error for ${email}:`, err.message);
+    console.error('Mailchimp event update error:', err.message);
     results.mailchimpError = err.message;
   }
 
@@ -291,7 +302,7 @@ export async function processStatusChange(body) {
   try {
     results.notion = await updateNotionStatus(email, mappedStatus);
   } catch (err) {
-    console.error(`Notion error for ${email}:`, err.message);
+    console.error('Notion event update error:', err.message);
     results.notionError = err.message;
   }
 
@@ -308,15 +319,15 @@ export async function processCheckin(body) {
     throw new Error('Missing email in check-in payload');
   }
 
-  console.log(`📱 Processing check-in: ${email}`);
+  console.log('Processing Jaarevent check-in');
 
-  const results = { email };
+  const results = {};
 
   // Update Mailchimp
   try {
     results.mailchimp = await updateMailchimpStatus(email, 'aanwezig');
   } catch (err) {
-    console.error(`Mailchimp error for ${email}:`, err.message);
+    console.error('Mailchimp event update error:', err.message);
     results.mailchimpError = err.message;
   }
 
@@ -324,7 +335,7 @@ export async function processCheckin(body) {
   try {
     results.notion = await updateNotionStatus(email, 'aanwezig');
   } catch (err) {
-    console.error(`Notion error for ${email}:`, err.message);
+    console.error('Notion event update error:', err.message);
     results.notionError = err.message;
   }
 
