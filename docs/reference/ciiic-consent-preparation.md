@@ -28,7 +28,7 @@ Live GET-controle, 6 oktober 2026: Coolify `relaybot` (`m7z1z547ie42j0d60fy0tvxx
 
 Het register versleutelt contactgegevens, bewijs en events. Bestanden krijgen beperkte rechten; een sleutelcontrole voorkomt dat gewijzigde sleutels een bestaand register stil onzichtbaar maken. Back-up en sleutelbewaring moeten samen worden geregeld vóór activatie. Sleutelrotatie is geen env-wijziging zonder datamigratie.
 
-**Merge is hier automatisch deploy.** Vóór merge moet de reviewer de impact van ontbrekende configuratie beoordelen: nieuwe CIIIC-opt-ins falen gesloten zonder register-/signingconfiguratie. Het hubonderzoek vond forms13/26/27 inactief en form43/IX Labs actief; hercontroleer dit bij activatie. Accountconfiguratie en het wijzigen van Forms-feeds horen bij apart geautoriseerde uitvoering.
+**Merge is hier automatisch deploy.** Vóór merge moet de reviewer de impact van ontbrekende configuratie beoordelen: nieuwe CIIIC-opt-ins falen gesloten zonder register-/signingconfiguratie. Live hercontrole op 6 oktober 2026 vond forms13/26/27 inactief, maar de actieve Form43-feed7 wijst naar `list=ciiic`, zonder signingheader. Form43 valt dus wel onder de gewijzigde CIIIC-route. Signing-/registersleutels ontbreken in productie; merge is daarom geblokkeerd, zie [review R3](../reports/brevo-consent-rereview-2026-10-06.md). Hercontroleer de feitelijke feedbestemming bij iedere vrijgave. Accountconfiguratie en het wijzigen van Forms-feeds horen bij apart geautoriseerde uitvoering.
 
 ## Forms-ingress
 

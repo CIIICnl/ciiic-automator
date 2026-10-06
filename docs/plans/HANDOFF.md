@@ -1,18 +1,18 @@
-# Review-en-merge: herstelde consentvoorbereiding PR #2
+# Uitvoer: veilige deployvoorbereiding PR #2
 
-Rol: stuur. Tier: `flagship-review` (toestemming en migratie); onafhankelijke flagship-review in schone context vereist.
+Rol: uitvoer. Tier: `flagship-review` (toestemming, auth en migratie); na herstel onafhankelijke flagship-review.
 
 ## Stand bij vertrek
 
-6 oktober 2026: herstelronde voor [PR #2](https://github.com/CIIICnl/ciiic-automator/pull/2) op `feat/brevo-consent-preparation` gereed. R1 bewaart bronwijzigingen als intervallen naast exacte callbackmomenten en beslist transactioneel tegen duurzaam bewijs. R2 slaat taalconflicten duurzaam op; eenduidige, bewezen latere correcties kunnen ze opheffen. Versleutelde pending-batches bewaren eventidentiteit en tijdgrenzen bij gedeeltelijke toepassing. De volledige suite heeft 42 groene tests, inclusief tien nieuwe SQLite-/checkpointregressies. [Validatierapport](../reports/brevo-consent-validation-2026-10-06.md) en [runbook](../reference/ciiic-consent-preparation.md) zijn bijgewerkt. Main en productie zijn niet gewijzigd. TODO3/4 en de oorspronkelijke meta-briefing blijven open.
+6 oktober 2026: Astra heeft code-head `714d982` van [PR #2](https://github.com/CIIICnl/ciiic-automator/pull/2) opnieuw gereviewd. R1/R2 geaccepteerd; 42 tests en CI Node20/22 groen. Merge afgewezen op R3: live Form43/feed7 is actief en stuurt naar `list=ciiic`, zonder signingheader; productie mist de signing-/registersleutels. Merge naar main zou deze actieve route HTTP 503 laten geven. De aanname dat Form43 buiten CIIIC valt klopt niet. Main en productie zijn ongewijzigd. TODO3/4 en de oorspronkelijke briefing blijven open.
 
 ## Opdracht
 
-1. Review de volledige actuele PR #2 tegen de [brief](briefs/brevo-consent-preparation.md), hubplan secties 2–6 en [oorspronkelijke review](../reports/brevo-consent-review-2026-10-06.md). Controleer R1/R2 zelfstandig: beide aankomstvolgordes, scanvensters, late callbacks, conflictbehoud, herstel na gedeeltelijke toepassing en editieblokkering. Draai de volledige suite en controleer CI Node20/22 op de actuele head.
-2. Beoordeel vóór merge expliciet de actuele deploy-impact: main deployt automatisch. Verifieer live feedstatus en benodigde register-/signingconfiguratie met alleen-lezen controles. Ongeconfigureerde CIIIC-opt-ins falen gesloten. Leid geen productieconfiguratie, import, activatie, cutover of verzending af uit deze voorbereiding; laat de PR open als veilig deployen niet bewezen is.
-3. Bij acceptatie én veilige deploy-impact: merge, verifieer de vereiste live uitkomst, voer `merge-housekeeping` uit en sluit TODO3/4 alleen met bewijs. Bij afwijzing: concrete herstelcriteria op dezelfde PR. TODO5 blijft afzonderlijk activatiewerk met autoritatief DOI-bewijs, consumerkoppelingen en reconciliation vóór T0. Oude proefregisters uit de afgewezen versie zijn geen betrouwbare productiebron.
-4. Controleer `~/.claude/bin/meta briefings.sh open ciiic-automator`; sluit de oorspronkelijke briefing alleen na bewijs van alle Done-when-criteria. Log de sessie in JAAP-KB en behoud het doorgeefblok hieronder.
-5. Overschrijf deze handoff met de passende vervolgopdracht, neem deze overschrijf-plicht weer op en eindig met de bijbehorende sluitregel. Bij een nog open PR gaat herstel of nieuwe review vóór TODO1.
+1. Lees de [uitvoeringsbrief](briefs/brevo-consent-preparation.md) en [nieuwe review R3](../reports/brevo-consent-rereview-2026-10-06.md). Herstel op de bestaande branch `feat/brevo-consent-preparation`; behoud het geaccepteerde R1/R2-herstel.
+2. Maak codevoorbereiding veilig te deployen zonder impliciete activatie van de nieuwe consentroute op de actieve Form43-feed. Scheid zo nodig de live routeomschakeling van de voorbereidende modules; leg het defaultgedrag expliciet vast. Geen unsigned fallback in de nieuwe consentroute. Geen feedbestemming, productieconfiguratie, import, cutover of verzending wijzigen vanuit dit mandaat. De hubbriefing `2026-10-06--from-ciiic-automator--to-jaap-work--form43-actieve-ciiic-feed-blokkeert-consent-deploy.md` corrigeert de cross-repo uitgangsaanname.
+3. Test de daadwerkelijke routewiring met de live configuratievorm, aangevinkt én leeg veld5 en de nieuwe expliciet geconfigureerde route. Draai de volledige suite en CI. Actualiseer runbook, validatiebewijs en PR-body; accepteer geen verlies van signing, suppressies of DOI-bescherming in de nieuwe code.
+4. Laat PR #2 open voor onafhankelijke flagship-review, inclusief nieuwe live feed-/env-controle vóór merge. TODO5 blijft afzonderlijk activatiewerk; oude proefregisters blijven ongeschikt. Controleer open meta-briefings, sluit alleen met bewijs, log de sessie en behoud het doorgeefblok.
+5. Overschrijf deze handoff met de review-en-merge-opdracht voor PR #2, neem deze overschrijf-plicht weer op en sluit af met de bijbehorende sluitregel.
 
 ## Doorgeefblok: bestaande opdrachten behouden
 
