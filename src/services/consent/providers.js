@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
 import { normalizeEmail } from './store.js';
+import { BREVO_LANGUAGE_ATTRIBUTE, createLanguageCodecLoader } from './brevo-language.js';
 
-async function request(url, options) {
+export async function request(url, options) {
   const response = await fetch(url, { ...options, signal: AbortSignal.timeout(10000) });
   let data;
   try { data = await response.json(); } catch { data = {}; }
@@ -38,6 +39,7 @@ export function createBrevoProvider({ apiKey = process.env.BREVO_API_KEY2, listI
   if (!apiKey || !listSyntaxValid || !Number.isSafeInteger(list) || list < 1 || [2, 3].includes(list) || !templateSyntaxValid || !Number.isSafeInteger(template) || template < 1) throw new Error('Brevo DOI configuration incomplete or test list selected');
   if (!/^https:\/\//.test(redirectionUrl || '')) throw new Error('Brevo DOI redirect must be HTTPS');
   const headers = { 'api-key': apiKey, 'Content-Type': 'application/json' };
+  const loadLanguageCodec = createLanguageCodecLoader({ apiKey, transport });
   return {
     name: 'brevo',
     async read(email) {
@@ -47,7 +49,8 @@ export function createBrevoProvider({ apiKey = process.env.BREVO_API_KEY2, listI
       return { exists: true, status: result.data.emailBlacklisted ? 'unsubscribed' : 'existing', suppressed: Boolean(result.data.emailBlacklisted || result.data.listUnsubscribed?.includes(list)), listIds: result.data.listIds || [] };
     },
     async requestDoi({ email, firstName, lastName, language }) {
-      const result = await transport('https://api.brevo.com/v3/contacts/doubleOptinConfirmation', { method: 'POST', headers, body: JSON.stringify({ email: normalizeEmail(email), includeListIds: [list], templateId: template, redirectionUrl, attributes: { FIRSTNAME: firstName || '', LASTNAME: lastName || '', TAAL: language } }) });
+      const languageValue = (await loadLanguageCodec()).toValue(language);
+      const result = await transport('https://api.brevo.com/v3/contacts/doubleOptinConfirmation', { method: 'POST', headers, body: JSON.stringify({ email: normalizeEmail(email), includeListIds: [list], templateId: template, redirectionUrl, attributes: { FIRSTNAME: firstName || '', LASTNAME: lastName || '', [BREVO_LANGUAGE_ATTRIBUTE]: languageValue } }) });
       if (result.status !== 201) throw new Error(`Brevo DOI request failed (${result.status})`);
       return { pending: true };
     },

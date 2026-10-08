@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildMigrationPlan, CIIIC_LIST_ID, publicMigrationSummary } from '../src/services/consent/migration.js';
+import { BREVO_LANGUAGE_ATTRIBUTE, languageCodecFromAttributes } from '../src/services/consent/brevo-language.js';
 
 const MAILCHIMP_STATUSES = ['subscribed', 'unsubscribed', 'cleaned', 'pending', 'archived', 'transactional'];
 
@@ -49,12 +50,23 @@ export async function mailchimpMembers() {
   return members;
 }
 
-async function brevoContacts() {
+function brevoKey() {
   const key = process.env.BREVO_API_KEY2 || process.env.BREVO_API_KEY;
   if (!key) throw new Error('BREVO_API_KEY2 or BREVO_API_KEY required');
+  return key;
+}
+
+async function brevoContacts() {
   return readPages((offset, limit) =>
     `https://api.brevo.com/v3/contacts?limit=${limit}&offset=${offset}`,
-  { 'api-key': key }, 'contacts', 1000);
+  { 'api-key': brevoKey() }, 'contacts', 1000);
+}
+
+// The LANGUAGE category values are read live and validated, never assumed.
+async function brevoLanguageEnumeration() {
+  const data = await getJson('https://api.brevo.com/v3/contacts/attributes', { 'api-key': brevoKey() });
+  languageCodecFromAttributes(data);
+  return data.attributes.find((attribute) => attribute.name === BREVO_LANGUAGE_ATTRIBUTE).enumeration;
 }
 
 export function encryptionKey() {
@@ -113,7 +125,8 @@ async function main() {
     snapshotDigest(firstContacts, key) !== snapshotDigest(contacts, key)) {
     throw new Error('Source changed during read-only scan; retry later');
   }
-  const plan = buildMigrationPlan({ members, brevoContacts: contacts, evidenceByEmail,
+  const languageEnumeration = await brevoLanguageEnumeration();
+  const plan = buildMigrationPlan({ members, brevoContacts: contacts, evidenceByEmail, languageEnumeration,
     checksumKey: process.env.CONSENT_HMAC_KEY || key,
     targetBrevoListId: process.env.BREVO_CIIIC_LIST_ID || null });
   const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
@@ -126,7 +139,7 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) main().catch((error) => {
   // Never print API response bodies, URLs, addresses or credentials.
-  const safe = /^(MAILCHIMP_API_KEY required|Invalid Mailchimp data centre|BREVO_API_KEY2 or BREVO_API_KEY required|CONSENT_EXPORT_KEY must be 32-byte hex|Provider pagination shape changed|Provider count changed during scan; retry later|Provider pagination stalled|Source changed during read-only scan; retry later)$/.test(error.message);
+  const safe = /^(MAILCHIMP_API_KEY required|Invalid Mailchimp data centre|BREVO_API_KEY2 or BREVO_API_KEY required|CONSENT_EXPORT_KEY must be 32-byte hex|Provider pagination shape changed|Provider count changed during scan; retry later|Provider pagination stalled|Source changed during read-only scan; retry later|Brevo LANGUAGE category attribute missing|Brevo LANGUAGE enumeration changed|Brevo LANGUAGE enumeration missing)$/.test(error.message);
   process.stderr.write(`Consent preflight stopped: ${safe ? error.message : 'read or validation failure; no response body logged'}\n`);
   process.exitCode = 1;
 });

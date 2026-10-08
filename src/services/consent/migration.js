@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { BREVO_LANGUAGE_ATTRIBUTE, createLanguageCodec } from './brevo-language.js';
 
 export const CIIIC_LIST_ID = '67fe159b9d';
 export const LANGUAGE_INTERESTS = Object.freeze({ nl: 'ed25c3d4cc', en: 'd32b374b91' });
@@ -50,9 +51,18 @@ function checksum(records, key) {
   return hmac.digest('hex');
 }
 
+// Brevo contacts carry LANGUAGE as an enumeration number; the caller passes
+// the live enumeration (GET /v3/contacts/attributes) so the plan can decode it.
 export function buildMigrationPlan({ members, brevoContacts = [], evidenceByEmail = {}, checksumKey, batchSize = 100,
-  targetBrevoListId = null }) {
+  targetBrevoListId = null, languageEnumeration = null }) {
   if (!checksumKey || !Number.isInteger(batchSize) || batchSize < 1) throw new Error('Checksum key and positive batch size required');
+  const languageCodec = languageEnumeration ? createLanguageCodec(languageEnumeration) : null;
+  const existingLanguageOf = (contact) => {
+    const raw = contact?.attributes?.[BREVO_LANGUAGE_ATTRIBUTE];
+    if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+    if (!languageCodec) throw new Error('Brevo LANGUAGE enumeration required to read existing contacts');
+    try { return languageCodec.fromValue(raw); } catch { return 'invalid'; }
+  };
   if (targetBrevoListId !== null && (!Number.isSafeInteger(Number(targetBrevoListId)) || Number(targetBrevoListId) <= 0 ||
     [2, 3].includes(Number(targetBrevoListId)))) throw new Error('Dedicated Brevo CIIIC list ID required');
   const seen = new Map();
@@ -85,7 +95,7 @@ export function buildMigrationPlan({ members, brevoContacts = [], evidenceByEmai
       return { action: 'quarantine', reason: 'unresolved_brevo_list_suppression', email };
     }
     if (row.action === 'candidate' && existing.length > 1) return { action: 'quarantine', reason: 'duplicate_brevo_identity', email };
-    const existingLanguage = String(existing[0]?.attributes?.TAAL ?? '').trim().toLowerCase();
+    const existingLanguage = row.action === 'candidate' ? existingLanguageOf(existing[0]) : null;
     if (row.action === 'candidate' && existingLanguage && existingLanguage !== row.language) {
       return { action: 'quarantine', reason: 'brevo_language_conflict', email };
     }
@@ -109,7 +119,7 @@ export function buildMigrationPlan({ members, brevoContacts = [], evidenceByEmai
   }
   return { rows, counts, batches, gate: {
     providerImportExecutable: false, automationsMustBeDisabled: true,
-    readbackRequired: ['membership', 'TAAL', 'suppressions'],
+    readbackRequired: ['membership', BREVO_LANGUAGE_ATTRIBUTE, 'suppressions'],
     partialBatchBlocksCutover: true,
   } };
 }
@@ -121,7 +131,11 @@ export function publicMigrationSummary(plan) {
 // Used after a separately authorized baseline import. It only compares a full
 // provider readback and the local suppression registry; it cannot import data.
 export function compareBaselineReadback({ plan, contacts, registryByEmail, targetBrevoListId,
-  automationsDisabled, readbackComplete, priorBrevoContacts = [] }) {
+  automationsDisabled, readbackComplete, priorBrevoContacts = [], languageEnumeration }) {
+  const languageCodec = createLanguageCodec(languageEnumeration);
+  const languageOf = (contact) => {
+    try { return languageCodec.fromValue(contact?.attributes?.[BREVO_LANGUAGE_ATTRIBUTE]); } catch { return null; }
+  };
   if (!Number.isSafeInteger(Number(targetBrevoListId)) || Number(targetBrevoListId) <= 0 ||
     [2, 3].includes(Number(targetBrevoListId)) || !automationsDisabled || !readbackComplete) {
     throw new Error('Readback requires target list, disabled automations and complete scan');
@@ -143,7 +157,7 @@ export function compareBaselineReadback({ plan, contacts, registryByEmail, targe
   for (const [email, row] of expected) {
     const contact = actual.get(email);
     if (!contact?.listIds?.includes(Number(targetBrevoListId))) issues.missingMembership += 1;
-    if (String(contact?.attributes?.TAAL ?? '').toLowerCase() !== row.language) issues.languageMismatch += 1;
+    if (languageOf(contact) !== row.language) issues.languageMismatch += 1;
     if (contact?.emailBlacklisted || contact?.listUnsubscribed?.includes(Number(targetBrevoListId))) {
       issues.unexpectedSuppression += 1;
     }
