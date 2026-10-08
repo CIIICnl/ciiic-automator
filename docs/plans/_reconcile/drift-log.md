@@ -16,10 +16,14 @@ Gesloten: TODO 3 en 4. Brief `brevo-consent-preparation.md` naar `done/`. TODO 1
 
 Gesloten: TODO 1. De `[STALE-PLAN]` over TODO 1 is daarmee opgelost en weg. Nieuw: TODO 6 (deliverability, beslissing Jaap). Geen nieuwe signalen.
 
+### 2026-10-08 — PR #4 (merge `d098761`)
+
+Gesloten: TODO 2 (register + write-up). Recently done teruggebracht naar vijf regels. Geen restwerk zonder adres: de scan-controle van 9 okt staat in de handoff. PR #3 (`e57d7be`, briefing LANGUAGE, geen TODO-item) kreeg geen eigen log-entry; nu meegeteld. Claimbord leeg, `repo-hygiene check` schoon, TODO.md 2 items, ruim onder budget. Geen `[CONFLICT]`. Drempel: 0 open signalen, 3 merges sinds nulpunt, niet gehaald.
+
 ## Laatste diepe audit
 
 Nog geen. Repo aangesloten op de werkwijze op 2026-09-10 via `/workflow-init`; dat telt als nulpunt, niet als audit.
 
 ## Nudges-teller
 
-Merges sinds laatste audit: 1
+Merges sinds laatste audit: 3

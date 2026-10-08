@@ -24,10 +24,8 @@ Klaar als: per punt een besluit in `done/decisions.md`, en een hertest naar een 
 
 ## Recently done
 
-- 2026-10-08, #2 Radar-bronnen beslist: Springer en Nature aan in Coolify-env, EurekAlert/Immersive Wire/UploadVR uit de code (PR, zie `done/decisions.md`).
+- 2026-10-08, PR #4 — #2 Radar-bronnen beslist: Springer en Nature aan in Coolify-env, EurekAlert/Immersive Wire/UploadVR uit de code (merge `d098761`, zie `done/decisions.md`).
 - 2026-10-06, #1 draft-resume in productie gerookt: `/data`-mount bestaat, save → mail → link → `GET /draft/:token` werkt; deliverability-bevinding werd #6. Write-up `done/2026-10.md`.
 - 2026-10-06, PR #2 — #4 consentvoorbereiding: provideradapter, versleuteld register, reconciliation/preflight en getekende Forms-ingress, alles achter `CIIIC_CONSENT_ROUTE` (default uit = oud gedrag). Activatie is #5. Write-up `done/2026-10.md`.
 - 2026-10-06, PR #2 — #3 regressietests: `npm test` met 46 tests over signing, register, migratie en routewiring; CI Node 20/22.
 - 2026-09 — Draft-resume endpoints voor publicvalues.ciiic.nl (brief afgerond, zie `done/register.md`)
-- 2026-09 — HMAC-signature op `/webhook/registration-status` (`ca39d36`)
-- 2026-09 — Generieke newsletter-opt-in webhook voor Gravity Forms (`b86cabf`)
