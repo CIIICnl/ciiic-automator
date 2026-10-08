@@ -186,11 +186,10 @@ sources are scaffolded off behind flags until hardened (see the recon docs).
 |------|--------|--------|--------|
 | event | XRMust XR Agenda | WP REST API + per-event page fetch | ✅ on |
 | event | Immersive Filmmaking Calendar | Google Sheet CSV | ✅ on |
-| event | Immersive Wire | beehiiv RSS | ⏸️ off (`RADAR_ENABLE_IMMERSIVEWIRE=1`) |
 | research | arXiv cs.HC + cs.GR | Atom API | ✅ on |
 | research | Frontiers in VR, Elsevier C&G | RSS | ✅ on |
-| research | Springer VR, Nature Scientific Reports | RSS | ⏸️ off — block server-side fetch with a JS challenge; need a headless/proxy fetch (`RADAR_ENABLE_SPRINGER=1`/`RADAR_ENABLE_NATURE=1`) |
-| research | EurekAlert, Immerse, Voices of VR | RSS / newsletter | ⏸️ off (phase 2b) |
+| research | Springer VR, Nature Scientific Reports | RSS | ✅ on via `RADAR_ENABLE_SPRINGER=1`/`RADAR_ENABLE_NATURE=1` (since 2026-10-08; Springer's fetch can still hit a JS challenge) |
+| research | Immerse (MIT ODL) | newsletter | ⏸️ not wired (needs a multi-item extractor) |
 | funding | EU Funding & Tenders | SEDIA search-API | ✅ on (`eu-sedia`) |
 | funding | national funds (Filmfonds, CNC, Medienboard, …) | page-scrape | ⏸️ off (phase 2b) |
 
