@@ -9,6 +9,7 @@ import { createConsentStore } from '../src/services/consent/store.js';
 import { requestCiiicSubscription } from '../src/services/consent/subscriber.js';
 import { createBrevoProvider, createMailchimpProvider } from '../src/services/consent/providers.js';
 import { createMarketingRouter, mapBrevoMarketingEvent } from '../src/services/consent/callbacks.js';
+import { createLanguageCodec, createLanguageCodecLoader, languageCodecFromAttributes } from '../src/services/consent/brevo-language.js';
 
 function fixture() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ciiic-consent-'));
@@ -79,7 +80,12 @@ test('existing provider member is never changed by anonymous signup', async () =
 
 test('provider adapters request DOI only and reject test lists', async () => {
   const calls = [];
-  const transport = async (url, options) => { calls.push({ url, options }); return { status: url.includes('doubleOptin') ? 201 : 200, data: { status: 'pending' } }; };
+  const attributes = { attributes: [{ name: 'LANGUAGE', category: 'category', enumeration: [{ value: 1, label: 'English' }, { value: 2, label: 'Nederlands' }] }] };
+  const transport = async (url, options) => {
+    if (url.endsWith('/contacts/attributes')) return { status: 200, data: attributes };
+    calls.push({ url, options });
+    return { status: url.includes('doubleOptin') ? 201 : 200, data: { status: 'pending' } };
+  };
   const mc = createMailchimpProvider({ apiKey: 'test', transport });
   await mc.requestDoi({ email, language: 'en' });
   assert.equal(JSON.parse(calls[0].options.body).status, 'pending');
@@ -88,6 +94,11 @@ test('provider adapters request DOI only and reject test lists', async () => {
   const brevo = createBrevoProvider({ apiKey: 'test', listId: 44, templateId: 1, redirectionUrl: 'https://example.org', transport });
   await brevo.requestDoi({ email, language: 'nl' });
   assert.equal(JSON.parse(calls[1].options.body).includeListIds[0], 44);
+  assert.deepEqual(JSON.parse(calls[1].options.body).attributes, { FIRSTNAME: '', LASTNAME: '', LANGUAGE: 2 });
+  await brevo.requestDoi({ email, language: 'en' });
+  assert.equal(JSON.parse(calls[2].options.body).attributes.LANGUAGE, 1);
+  assert.equal('TAAL' in JSON.parse(calls[2].options.body).attributes, false);
+  await assert.rejects(brevo.requestDoi({ email, language: 'de' }), /Invalid language/);
 });
 
 test('Brevo callback maps real marketing payload, never delivery to confirmation', () => {
@@ -163,6 +174,70 @@ test('same-source same-time preference conflicts quarantine in either order unti
       assert.equal(f.store.get(email).language, 'en');
     } finally { f.cleanup(); }
   }
+});
+
+const languageEnumeration = [{ value: 1, label: 'English' }, { value: 2, label: 'Nederlands' }];
+
+test('Brevo LANGUAGE codec follows the live enumeration and refuses drift', async () => {
+  const codec = createLanguageCodec(languageEnumeration);
+  assert.equal(codec.toValue('en'), 1);
+  assert.equal(codec.toValue('nl'), 2);
+  assert.throws(() => codec.toValue('de'), /Invalid language/);
+  assert.equal(codec.fromValue('1'), 'en');
+  assert.equal(codec.fromValue(2), 'nl');
+  assert.equal(codec.fromValue('Nederlands'), 'nl');
+  assert.equal(codec.fromValue(''), null);
+  assert.throws(() => codec.fromValue('3'), /Invalid Brevo language value/);
+  assert.equal(createLanguageCodec([{ value: 7, label: 'Nederlands' }, { value: 9, label: 'English' }]).toValue('nl'), 7);
+  for (const drifted of [[{ value: 1, label: 'English' }], [...languageEnumeration, { value: 3, label: 'Deutsch' }],
+    [{ value: 1, label: 'English' }, { value: 2, label: 'English' }], [{ value: 'x', label: 'English' }, { value: 2, label: 'Nederlands' }]]) {
+    assert.throws(() => createLanguageCodec(drifted), /enumeration changed/);
+  }
+  assert.throws(() => languageCodecFromAttributes({ attributes: [{ name: 'LANGUAGE', category: 'normal', type: 'text' }] }), /category attribute missing/);
+  assert.throws(() => languageCodecFromAttributes({ attributes: [{ name: 'TAAL', category: 'normal', type: 'text' }] }), /category attribute missing/);
+  let reads = 0;
+  let fail = true;
+  const load = createLanguageCodecLoader({ apiKey: 'test', transport: async () => {
+    reads++;
+    if (fail) { fail = false; return { status: 500, data: {} }; }
+    return { status: 200, data: { attributes: [{ name: 'LANGUAGE', category: 'category', enumeration: languageEnumeration }] } };
+  } });
+  await assert.rejects(load(), /lookup failed/);
+  assert.equal((await load()).toValue('nl'), 2);
+  await load();
+  assert.equal(reads, 2);
+});
+
+test('Brevo profile update maps LANGUAGE value or label to a preference', () => {
+  const codec = createLanguageCodec(languageEnumeration);
+  const body = { email, event: 'contact_updated', ts_event: 1791288000, content: [{ LANGUAGE: '1' }] };
+  assert.equal(mapBrevoMarketingEvent(body, 44, codec).language, 'en');
+  assert.equal(mapBrevoMarketingEvent({ ...body, content: [{ LANGUAGE: 'Nederlands' }] }, 44, codec).language, 'nl');
+  assert.equal(mapBrevoMarketingEvent({ ...body, content: [{ TAAL: 'en' }] }, 44, codec), null);
+  assert.equal(mapBrevoMarketingEvent({ ...body, content: [{ LANGUAGE: '' }] }, 44, codec), null);
+  assert.throws(() => mapBrevoMarketingEvent({ ...body, content: [{ LANGUAGE: '5' }] }, 44, codec), /Invalid Brevo language update/);
+  assert.throws(() => mapBrevoMarketingEvent(body, 44), /codec unavailable/);
+});
+
+test('profile update reads the enumeration lazily and asks for a retry when it cannot', async () => {
+  const f = fixture();
+  const update = { email, event: 'contact_updated', ts_event: 1791288000, content: [{ LANGUAGE: '1' }] };
+  try {
+    f.store.applyEvent({ email, id: 'known', type: 'preference', source: 'mailchimp', occurredAt: '2026-10-05T10:00:00Z', language: 'nl' });
+    let loads = 0;
+    const broken = async () => { loads++; throw new Error('Brevo attribute lookup failed (500)'); };
+    await withRouter({ store: f.store, token: 'synthetic-secret', listId: 44, loadLanguageCodec: broken }, async post => {
+      assert.equal((await post({ id: 1, email, event: 'unsubscribe', ts_event: 1791288000, list_id: [88] })).status, 200);
+      assert.equal(loads, 0);
+      assert.equal((await post(update)).status, 503);
+      assert.equal(f.store.get(email).language, 'nl');
+    });
+    const working = async () => createLanguageCodec(languageEnumeration);
+    await withRouter({ store: f.store, token: 'synthetic-secret', listId: 44, loadLanguageCodec: working }, async post => {
+      assert.equal((await post(update)).status, 200);
+      assert.equal(f.store.get(email).language, 'en');
+    });
+  } finally { f.cleanup(); }
 });
 
 test('marketing callback requires configured Bearer token and valid CIIIC list', async () => {

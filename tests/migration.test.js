@@ -9,6 +9,7 @@ import { buildMigrationPlan, compareBaselineReadback, languageFromInterests, LAN
 import { reconcileMailchimpSnapshot } from '../src/services/consent/reconciliation.js';
 import { applyReconciliation, readCheckpoint, withCheckpointLock } from '../scripts/consent-reconcile.mjs';
 
+const languageEnumeration = [{ value: 1, label: 'English' }, { value: 2, label: 'Nederlands' }];
 const evidence = { granted: true, source: 'form-42', notice: 'newsletter-2026', recordedAt: '2026-01-01T00:00:00Z' };
 const member = (email, status = 'subscribed', interests = {}) => ({
   id: email, email_address: email, status, interests, list_id: '67fe159b9d', last_changed: '2026-10-06T10:00:00Z',
@@ -80,21 +81,40 @@ test('rollback delta retains every change since T0 in causal order', () => {
 test('baseline readback verifies membership, language, and durable suppression', () => {
   const plan = buildMigrationPlan({ members: [member('yes@example.test'), member('off@example.test', 'unsubscribed')],
     evidenceByEmail: { 'yes@example.test': evidence }, checksumKey: 'fixture-secret' });
-  const input = { plan, contacts: [{ email: 'yes@example.test', listIds: [42], attributes: { TAAL: 'nl' } }],
+  const input = { plan, contacts: [{ email: 'yes@example.test', listIds: [42], attributes: { LANGUAGE: '2' } }],
     registryByEmail: { 'off@example.test': { suppressed: true } }, targetBrevoListId: 42,
-    automationsDisabled: true, readbackComplete: true };
+    automationsDisabled: true, readbackComplete: true, languageEnumeration };
   assert.equal(compareBaselineReadback(input).verified, true);
   assert.deepEqual(compareBaselineReadback({ ...input, contacts: [{ email: 'yes@example.test', listIds: [42],
-    attributes: { TAAL: 'en' } }] }).issues.languageMismatch, 1);
+    attributes: { LANGUAGE: '1' } }] }).issues.languageMismatch, 1);
+  assert.equal(compareBaselineReadback({ ...input, contacts: [{ email: 'yes@example.test', listIds: [42],
+    attributes: { TAAL: 'nl' } }] }).issues.languageMismatch, 1);
+  assert.throws(() => compareBaselineReadback({ ...input, languageEnumeration: undefined }), /enumeration missing/);
   assert.equal(compareBaselineReadback({ ...input, registryByEmail: {} }).verified, false);
   assert.equal(compareBaselineReadback({ ...input, contacts: [{ email: 'yes@example.test', listIds: [42],
-    attributes: { TAAL: 'nl' }, emailBlacklisted: true }] }).issues.unexpectedSuppression, 1);
+    attributes: { LANGUAGE: '2' }, emailBlacklisted: true }] }).issues.unexpectedSuppression, 1);
   assert.equal(compareBaselineReadback({ ...input, priorBrevoContacts: [{ email: 'yes@example.test',
     emailBlacklisted: true }] }).issues.lostExistingBlock, 1);
   assert.equal(compareBaselineReadback({ ...input, priorBrevoContacts: [{ email: 'yes@example.test',
     listUnsubscribed: [42] }] }).issues.lostExistingBlock, 1);
   assert.throws(() => compareBaselineReadback({ ...input, automationsDisabled: false }), /disabled automations/);
   assert.throws(() => compareBaselineReadback({ ...input, targetBrevoListId: 3 }), /target list/);
+});
+
+test('existing Brevo LANGUAGE is decoded through the enumeration before conflict checks', () => {
+  const members = [member('nl@example.test'), member('en@example.test', 'subscribed', { [LANGUAGE_INTERESTS.en]: true }),
+    member('odd@example.test')];
+  const evidenceByEmail = Object.fromEntries(members.map((row) => [row.email_address, evidence]));
+  const brevoContacts = [{ email: 'nl@example.test', attributes: { LANGUAGE: '2' } },
+    { email: 'en@example.test', attributes: { LANGUAGE: '2' } }, { email: 'odd@example.test', attributes: { LANGUAGE: '7' } }];
+  const plan = buildMigrationPlan({ members, brevoContacts, evidenceByEmail, checksumKey: 'fixture-secret', languageEnumeration });
+  assert.deepEqual(plan.rows.map((row) => [row.email, row.action, row.reason ?? null]), [
+    ['nl@example.test', 'candidate', null],
+    ['en@example.test', 'quarantine', 'brevo_language_conflict'],
+    ['odd@example.test', 'quarantine', 'brevo_language_conflict']]);
+  assert.deepEqual(plan.gate.readbackRequired, ['membership', 'LANGUAGE', 'suppressions']);
+  assert.throws(() => buildMigrationPlan({ members, brevoContacts, evidenceByEmail, checksumKey: 'fixture-secret' }),
+    /enumeration required/);
 });
 
 test('failed reconciliation keeps old checkpoint and idempotent retry can finish', async () => {

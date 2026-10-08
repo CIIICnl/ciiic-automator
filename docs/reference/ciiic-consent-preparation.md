@@ -44,6 +44,19 @@ Het register versleutelt contactgegevens, bewijs en events. Bestanden krijgen be
 
 **Merge is hier automatisch deploy.** Live hercontrole op 6 oktober 2026 vond forms13/26/27 inactief, maar de actieve Form43-feed7 wijst naar `list=ciiic`, zonder signingheader; signing-/registersleutels ontbreken in productie ([review R3](../reports/brevo-consent-rereview-2026-10-06.md)). Sinds de activatieschakelaar blijft die feed bij merge op het oude pad, zolang `CIIIC_CONSENT_ROUTE` in Coolify niet op `enabled` staat. Vóór merge controleert de reviewer live dat die variabele ontbreekt en dat de feedbestemming nog klopt met de tabel hierboven. Hercontroleer de feitelijke feedbestemming bij iedere vrijgave. Accountconfiguratie en het wijzigen van Forms-feeds horen bij apart geautoriseerde uitvoering.
 
+## Taalattribuut in Brevo: `LANGUAGE`
+
+Sinds 8 oktober 2026 staat de taalvoorkeur van een Brevo-contact in het category-attribuut `LANGUAGE`, niet meer in het tekstattribuut `TAAL` uit hubplan § 2. Brevo koppelt een keuzerondje in een profielformulier alleen aan een category-attribuut; `TAAL` is daarom verwijderd. Schrijf nooit naar `TAAL`: Brevo maakt dan stil een nieuw tekstattribuut aan dat de nieuwsbrieftool negeert.
+
+| Waarde | Label | Taal |
+|---|---|---|
+| `1` | English | `en` |
+| `2` | Nederlands | `nl` |
+
+`PUT /contacts/{id}`, de DOI-aanvraag en de import nemen het cijfer, niet het label; `GET /contacts/{id}` geeft het cijfer terug als tekst (`'2'`). De automator neemt de cijfers niet blind aan: `src/services/consent/brevo-language.js` leest de enumeratie live via `GET /v3/contacts/attributes` (de DOI-adapter en de webhook bij eerste gebruik, de preflight bij elke run) en weigert als die niet precies uit English en Nederlands bestaat. Een webhook-taalupdate die de enumeratie niet kan lezen krijgt 503, zodat Brevo hem opnieuw aanbiedt.
+
+Default voor een contact zonder bekende voorkeur is `2` (Nederlands); dat volgt uit de Mailchimp-default `nl` in de migratie en de Forms-default hierboven. De lezer wisselt zelf van taal via de voorkeurenlink in elke campagne (Brevo-profielformulier `6ac75613ff39c60902b428f5`); die wijziging komt als `contact_updated` met `LANGUAGE` binnen op de marketingcallback en wordt een voorkeursevent in het register.
+
 ## Forms-ingress
 
 Header: `X-Ciiic-Optin-Signature`, lowercase hex HMAC-SHA256 met `CIIIC_OPTIN_WEBHOOK_SECRET`. Onderteken exact de UTF-8-prefix `POST\n<pad inclusief exacte querystring>\n`, gevolgd door de letterlijke JSON-bodybytes. Queryvolgorde, encoding, spaties en bodyvolgorde mogen na ondertekening niet veranderen. Zo kan een ondertekende inzending niet met een andere opt-in-veldtoewijzing worden herhaald. Dit vervangt niet de bestaande handtekening voor `/webhook/registration-status`.
@@ -54,7 +67,7 @@ Forms blijft verantwoordelijk voor honeypot, invultijd, ALTCHA en IP-begrenzing 
 
 ## Marketingevents en bevestigingsbewijs
 
-`POST /webhook/marketing/brevo` verwacht `Authorization: Bearer <BREVO_MARKETING_WEBHOOK_TOKEN>`. Het verwerkt de gedocumenteerde marketingpayloads; Brevo-webhook-ID `id` is geen unieke contactgebeurtenis. Afmeldingen, hard bounces, spam en verwijderingen kunnen onderdrukken; taalupdates wijzigen geen toestemming. Een dubbele callback is idempotent. Een oudere afmelding blijft geldig, ook na een nieuwere voorkeurwijziging.
+`POST /webhook/marketing/brevo` verwacht `Authorization: Bearer <BREVO_MARKETING_WEBHOOK_TOKEN>`. Het verwerkt de gedocumenteerde marketingpayloads; Brevo-webhook-ID `id` is geen unieke contactgebeurtenis. Afmeldingen, hard bounces, spam en verwijderingen kunnen onderdrukken; taalupdates (`LANGUAGE`, zie hierboven) wijzigen geen toestemming. Een dubbele callback is idempotent. Een oudere afmelding blijft geldig, ook na een nieuwere voorkeurwijziging.
 
 **Een afgeleverde DOI-mail of `list_addition` bewijst geen bevestigde inschrijving.** Het register accepteert bevestigde toestemming alleen via een interne autoritatieve evidence-route. De automatische verificatie van daadwerkelijke provider-DOI-bevestiging is nog niet aangesloten. Totdat die account-/logkoppeling bewezen is, blijft nieuwe toestemming lokaal `pending` en niet verzendbaar via de editieboekhouding. Dit is een expliciete productiepoort, geen toestemming om contacten handmatig zonder bronbewijs te promoveren.
 
@@ -91,7 +104,7 @@ Er is bewust geen uitvoerbare providerimport in deze voorbereiding. Een volgend 
 
 1. Leg T0, bronchecksum, goedgekeurd diff, doel-lijstbinding en consentbewijs vast. Controleer dat bevestigings-, welkom- en marketingautomations uitstaan; providerflags blijven Mailchimp en Brevo-verzending blijft geblokkeerd.
 2. Leg eerst alle suppressies vast. Importeer daarna uitsluitend bewezen CIIIC-kandidaten, zonder suppressie-reset of nieuwe consentdatum. Registreer per batch en record uitkomst plus providerreferentie in het beveiligde register.
-3. Lees ieder contact volledig terug: lidmaatschap, canonieke TAAL en suppressies. Vergelijk tegen het goedgekeurde diff. Elke afwijking of gedeeltelijke batch blokkeert cutover; herhaling mag geen extra mail of toestemmingswijziging veroorzaken.
+3. Lees ieder contact volledig terug: lidmaatschap, `LANGUAGE` (gedecodeerd via de live enumeratie) en suppressies. Vergelijk tegen het goedgekeurde diff. Elke afwijking of gedeeltelijke batch blokkeert cutover; herhaling mag geen extra mail of toestemmingswijziging veroorzaken.
 4. Bewaar alle wijzigingen sinds T0, inclusief later ontvangen gebeurtenissen met een oude brondatum. Verwerk vóór cutover de finale delta en controleer de volledige bron-/doelset opnieuw.
 5. Bij rollback blijven alle nieuwe suppressies en voorkeuren gelden. Herstel nooit blind een oude export. Een gedeeltelijk verzonden editie vraagt eerst provideroverschrijdende send-reconciliation en een afzonderlijk besluit over resterende ontvangers.
 

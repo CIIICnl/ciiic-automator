@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
 import express from 'express';
 import { getConfiguredConsentStore, normalizeEmail } from './store.js';
+import { BREVO_LANGUAGE_ATTRIBUTE, createLanguageCodecLoader } from './brevo-language.js';
+import { request } from './providers.js';
 
 // Brevo documents Bearer webhook authentication, not a native signature.
 // https://developers.brevo.com/docs/secured-webhooks
@@ -11,7 +13,7 @@ function authorized(header, token) {
   return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
 }
 
-export function mapBrevoMarketingEvent(body, listId) {
+export function mapBrevoMarketingEvent(body, listId, languageCodec = null) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Invalid webhook body');
   const event = body.event;
   if (!['unsubscribe', 'hard_bounce', 'spam', 'contact_deleted', 'contact_updated'].includes(event)) return null;
@@ -22,10 +24,12 @@ export function mapBrevoMarketingEvent(body, listId) {
   // list_id array for unsubscribe. Delivery and list_addition are not DOI.
   // https://developers.brevo.com/docs/marketing-webhooks
   if (event === 'contact_updated') {
-    const value = Array.isArray(body.content) ? body.content.find(item => item && typeof item === 'object' && !Array.isArray(item) && (item.TAAL !== undefined || item.taal !== undefined)) : null;
+    const value = Array.isArray(body.content) ? body.content.find(item => item && typeof item === 'object' && !Array.isArray(item) && item[BREVO_LANGUAGE_ATTRIBUTE] !== undefined) : null;
     if (!value) return null;
-    const language = String(value.TAAL ?? value.taal).trim().toLowerCase();
-    if (!['nl', 'en'].includes(language)) throw new Error('Invalid Brevo language update');
+    if (!languageCodec) throw new Error('Brevo LANGUAGE codec unavailable');
+    let language;
+    try { language = languageCodec.fromValue(value[BREVO_LANGUAGE_ATTRIBUTE]); } catch { throw new Error('Invalid Brevo language update'); }
+    if (!language) return null;
     const fingerprint = crypto.createHash('sha256').update(JSON.stringify(body.content)).digest('hex');
     return { email, id: `${event}:${email}:${timestamp}:${fingerprint}`, type: 'preference', source: 'brevo-profile', occurredAt: new Date(timestamp * 1000).toISOString(), language };
   }
@@ -35,9 +39,10 @@ export function mapBrevoMarketingEvent(body, listId) {
   return { email, id, type: 'suppress', source: 'brevo', occurredAt: new Date(timestamp * 1000).toISOString(), reason: event };
 }
 
-export function createMarketingRouter({ store, token = process.env.BREVO_MARKETING_WEBHOOK_TOKEN, listId = process.env.BREVO_CIIIC_LIST_ID } = {}) {
+export function createMarketingRouter({ store, token = process.env.BREVO_MARKETING_WEBHOOK_TOKEN, listId = process.env.BREVO_CIIIC_LIST_ID,
+  loadLanguageCodec = createLanguageCodecLoader({ apiKey: process.env.BREVO_API_KEY2, transport: request }) } = {}) {
   const router = express.Router();
-  router.post('/brevo', (req, res) => {
+  router.post('/brevo', async (req, res) => {
     const listSyntaxValid = typeof listId === 'number' ? Number.isInteger(listId) : typeof listId === 'string' && /^\d+$/.test(listId);
     const list = Number(listId);
     if (!token || !listSyntaxValid || !Number.isSafeInteger(list) || list < 1 || [2, 3].includes(list)) return res.sendStatus(503);
@@ -45,9 +50,12 @@ export function createMarketingRouter({ store, token = process.env.BREVO_MARKETI
     try {
       const events = Array.isArray(req.body) ? req.body : [req.body];
       if (events.length > 100) return res.sendStatus(400);
+      // Only profile updates need the LANGUAGE enumeration; a failed lookup
+      // falls through to 503 so Brevo retries the batch.
+      const languageCodec = events.some(body => body?.event === 'contact_updated') ? await loadLanguageCodec() : null;
       // Validate the full batch before mutation. A provider retry after a DB
       // failure still works because applyEvent is idempotent per recipient.
-      const mappedEvents = events.map(body => mapBrevoMarketingEvent(body, list)).filter(Boolean);
+      const mappedEvents = events.map(body => mapBrevoMarketingEvent(body, list, languageCodec)).filter(Boolean);
       let applied = 0;
       for (const mapped of mappedEvents) {
           const registry = store || getConfiguredConsentStore();
