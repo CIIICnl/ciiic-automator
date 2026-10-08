@@ -45,7 +45,6 @@ import { postSignals } from './ingest.js';
 import { postScanReports } from './scanreport.js';
 import { scan as xrmustScan } from './sources/xrmust.js';
 import { scan as sheetScan } from './sources/sheet.js';
-import { scan as wireScan } from './sources/immersivewire.js';
 import { scan as arxivScan } from './sources/arxiv.js';
 import { scan as researchRssScan } from './sources/research-rss.js';
 import { scan as newsRssScan } from './sources/news-rss.js';
@@ -55,7 +54,6 @@ import { scan as sediaScan } from './sources/sedia.js';
 const SCANNERS = {
   api: xrmustScan,
   csv: sheetScan,
-  rss: wireScan,
   arxiv: arxivScan,
   'research-rss': researchRssScan,
   'news-rss': newsRssScan,

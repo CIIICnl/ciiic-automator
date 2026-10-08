@@ -47,7 +47,7 @@ export const USER_AGENT =
  *   key       stable source key sent as `source` in the signal
  *   type      event | research | funding | news   (drives extractor + date semantics)
  *   label     human name (logs)
- *   method    api | csv | rss | arxiv | research-rss | news-rss | sedia
+ *   method    api | csv | arxiv | research-rss | news-rss | sedia
  *   enabled   toggle without code change
  *
  * Phase 1 = events. Phase 2 = research + funding (see
@@ -78,18 +78,6 @@ export const SOURCES = [
     // and export?format=csv&gid=0 400s. Set RADAR_SHEET_GID to target another tab.
     gid: process.env.RADAR_SHEET_GID || '',
     enabled: true,
-  },
-  {
-    key: 'immersive-wire',
-    type: 'event',
-    label: 'Immersive Wire (Tom Ffiske)',
-    method: 'rss',
-    // The beehiiv feed. immersivewire.com/rss-feed is a human landing page, not XML.
-    rssUrl: process.env.RADAR_IMMERSIVEWIRE_RSS || 'https://rss.beehiiv.com/feeds/7CIsY61ym3.xml',
-    // Disabled in v1: the RSS works, but issues are news digests and single-event
-    // extraction is unreliable (verified: it mis-dated a marginal mention). Needs a
-    // multi-event extractor (phase 1b). Flip on via RADAR_ENABLE_IMMERSIVEWIRE=1.
-    enabled: process.env.RADAR_ENABLE_IMMERSIVEWIRE === '1',
   },
 
   // ---- research (phase 2) -------------------------------------------------
@@ -126,10 +114,11 @@ export const SOURCES = [
     rssUrl: 'https://rss.sciencedirect.com/publication/science/00978493',
     enabled: true,
   },
-  // Springer + Nature serve a JS bot-challenge page (HTTP 200, no XML) to plain
-  // server-side fetch — verified 2026-07-09, browser UA + Accept headers don't
-  // help. Need a headless fetch / feed-proxy (phase 2b). Their RSS is real when
-  // reached from a browser. Flip on once a working fetch path exists.
+  // Springer + Nature served a JS bot-challenge page to server-side fetch on
+  // 2026-07-09; from the production box both returned real RSS on 2026-10-08.
+  // Springer is still intermittent elsewhere, so a challenge day yields 0 items
+  // (visible in the scan-report), not a crash. Switched on in the relaybot
+  // Coolify env (RADAR_ENABLE_SPRINGER=1 / RADAR_ENABLE_NATURE=1).
   {
     key: 'springer-vr',
     type: 'research',
@@ -146,17 +135,6 @@ export const SOURCES = [
     rssUrl: 'https://www.nature.com/srep.rss',
     keywordFilter: true,
     enabled: process.env.RADAR_ENABLE_NATURE === '1',
-  },
-  // EurekAlert's keyword feed URL 404s (recon 2026-07-09); newsletter-LLM sources
-  // (Immerse, Voices of VR) need a multi-item extractor. Scaffolded OFF → phase 2b.
-  {
-    key: 'eurekalert-xr',
-    type: 'research',
-    label: 'EurekAlert! (AAAS) — XR',
-    method: 'research-rss',
-    rssUrl: process.env.RADAR_EUREKALERT_RSS || 'https://www.eurekalert.org/rss/technology_engineering.xml',
-    keywordFilter: true,
-    enabled: process.env.RADAR_ENABLE_EUREKALERT === '1',
   },
 
   // ---- news (phase 2c) ----------------------------------------------------
@@ -201,18 +179,10 @@ export const SOURCES = [
     rssUrl: 'https://www.roadtovr.com/feed/',
     enabled: true,
   },
-  {
-    key: 'uploadvr',
-    type: 'news',
-    label: 'UploadVR',
-    method: 'news-rss',
-    // Highest volume (60+ items/feed) and heavy overlap with Road to VR;
-    // scaffolded OFF to save LLM cost. Flip on via RADAR_ENABLE_UPLOADVR=1.
-    rssUrl: 'https://www.uploadvr.com/rss/',
-    enabled: process.env.RADAR_ENABLE_UPLOADVR === '1',
-  },
-  // xrtoday.com/feed returned 522 on recon (2026-07-09); immersive-wire issues
-  // are multi-item digests (see the events entry above) — both left out of news.
+  // Left out (decided 2026-10-08, see docs/plans/done/decisions.md): UploadVR
+  // (high volume, overlaps Road to VR), xrtoday.com (522 on recon), Immersive
+  // Wire (multi-item digests; single-item extraction mis-dated events) and
+  // EurekAlert (feed URL 404s).
 
   // ---- funding (phase 2) --------------------------------------------------
   // EU calls via the SEDIA search-API (one query covers several programmes; each
