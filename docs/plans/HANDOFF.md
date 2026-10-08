@@ -1,21 +1,17 @@
-# Uitvoer: TODO 2, uitgezette Radar-bronnen beslissen
+# Review-en-merge: PR #4, Radar-bronnen opgeruimd
 
-Rol: uitvoer. Tier: `workhorse`.
+Rol: stuur. Review-en-merge, tier `workhorse`.
 
 ## Stand bij vertrek
 
-6 oktober 2026, Opus (uitvoer): TODO 1 gesloten. Draft-resume werkt in productie: `/data`-mount op `relaybot` bestaat, testsaves verhoogden de count van 2 naar 5, de link uit de mail resumeert. Mail kwam aan bij jaap@ciiic.nl en Gmail; mailbox.org weigerde hem omdat het gedeelde Brevo-IP op SpamCop stond. Dat werd TODO 6 (beslissing Jaap). Geen PR, alleen docs. Write-up: `docs/plans/done/2026-10.md`. Open: TODO 2, 5 en 6.
-
-8 oktober 2026, Opus (uitvoer): briefing `brevo-taalattribuut-language-category` geleverd en gesloten. PR #3 gemerged (`e57d7be`) en gedeployd: de consentcode schrijft en leest de Brevo-taal nu als category-attribuut `LANGUAGE` (1 English, 2 Nederlands) via `src/services/consent/brevo-language.js`; `TAAL` bestaat niet meer. De opdracht hieronder (TODO 2) is niet aangeraakt en staat nog.
+8 oktober 2026, Opus (uitvoer): TODO 2 beslist met Jaap. Springer en Nature gaven vanuit de productiebox echte RSS; Jaap koos "aan". `RADAR_ENABLE_SPRINGER=1` en `RADAR_ENABLE_NATURE=1` staan in de Coolify-env van `relaybot` (productie + preview), `relaybot` is herdeployd (`sj2ghr340tgdodfbrejmnhnv`, finished) en de container toont beide als enabled. EurekAlert (404), Immersive Wire (digest-feed) en UploadVR (overlap met Road to VR) gaan eruit in PR #4. Besluiten in `docs/plans/done/decisions.md`, TODO 2 al naar Recently done in de PR. Open daarna: TODO 5 en 6.
 
 ## Opdracht
 
-1. Lees `docs/plans/TODO.md` § 2, `src/services/radar/config.js` en `docs/reference/radar-fase2-recon-2026-07-09.md`.
-2. Bepaal per `RADAR_ENABLE_*`-vlag wat hij aanzet en of de bron nu server-side werkt (één fetch per bron; Springer en Nature blokkeerden in juli). Lees de Coolify-env van `relaybot` (`m7z1z547ie42j0d60fy0tvxx`) met skill `ciiic-coolify`, alleen GETs.
-3. Leg Jaap per bron een voorstel voor (aan in Coolify-env of uit `config.js` halen) en wacht op zijn besluit. Zet zelf geen Coolify-env.
-4. Bronnen die eruit moeten: op een branch met eigen PR (elke push naar `main` deployt). Vlaggen die aan moeten: Jaap zet ze in Coolify, of jij na zijn expliciete akkoord. Besluit per bron één regel in `docs/plans/done/decisions.md`.
-5. Niets aan `CIIIC_CONSENT_ROUTE` of andere consentconfiguratie doen; dat is TODO 5. Log de sessie en behoud het doorgeefblok.
-6. Overschrijf deze handoff met de volgende opdracht (review-en-merge van je eigen PR, of TODO 6), neem deze overschrijf-plicht weer op en sluit af met de bijbehorende sluitregel.
+1. Review https://github.com/CIIICnl/ciiic-automator/pull/4: `config.js` heeft geen verwijzing meer naar de drie bronnen, `index.js` mist de `rss`-scanner en `sources/immersivewire.js` is weg, `npm test` groen (50 pass). Check dat geen andere bron `method: 'rss'` gebruikt.
+2. Merge naar `main` (deployt automatisch), check `https://bot.ciiic.nl/health`, draai `merge-housekeeping`.
+3. Optioneel na de scan van 9 okt 07:00: in monitor (scan-report) kijken of `springer-vr` en `nature-heritage` items opleverden. Springer met 0 items = bot-challenge die dag, geen bug.
+4. Overschrijf deze handoff met de volgende opdracht (TODO 6 of een van de open briefings hieronder), neem deze overschrijf-plicht weer op en sluit af met de bijbehorende sluitregel.
 
 ## Doorgeefblok: bestaande opdrachten behouden
 
