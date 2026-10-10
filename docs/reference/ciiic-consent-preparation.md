@@ -84,6 +84,22 @@ node scripts/consent-preflight.mjs --cleanup-only
 
 Deze commando's verwachten de genoemde secrets al in de procesomgeving. Het evidencebestand is een afgeschermde mapping per genormaliseerd adres met `granted`, `source`, `notice` en `recordedAt`, gebaseerd op gecontroleerde bronbewijzen. Bewaar dit buiten git. De uitvoer bevat aggregaten, batchchecksums en een tijdelijk exportpad, geen adressen. De AES-GCM-export bevat de brongegevens en het diff, staat in een afgeschermde tijdelijke map en heeft een bewaartermijn van zeven dagen. Draai de cleanup dagelijks en verwijder na acceptatie eerder indien mogelijk. Een providerinventaris is geen transactionele snapshot; veranderingen tijdens paginering of onbekende writers blokkeren cutover.
 
+### Migratie-dry-run (hubplan § 5 stap 2)
+
+De dry-run is dezelfde preflight met drie extra's. Hij muteert niets bij Mailchimp of Brevo.
+
+```sh
+CONSENT_EXPORT_KEY=… node scripts/consent-preflight.mjs --register-dir /data/consent/migration
+CONSENT_EXPORT_KEY=… node scripts/consent-preflight.mjs --register-dir /data/consent/migration \
+  --accept-sources "Hosted Signup Form,API - Generic" --policy "Jaap akkoord <datum> op dry-run <T0>"
+```
+
+- **Doellijst.** De preflight zoekt de Brevo-lijst "CIIIC nieuwsbrief" op naam (alleen GET). Bestaat hij nog niet, dan meldt de uitvoer `exists: false`; aanmaken hoort bij de import. Een gezette `BREVO_CIIIC_LIST_ID` moet naar diezelfde lijst wijzen, anders stopt de run.
+- **Grondslag.** `diff.consentBasis` telt de CIIIC-abonnees per Mailchimp-`source`, met hoeveel er een `timestamp_opt` en `ip_opt` hebben. Zonder keuze blijft elke abonnee in quarantaine (`unproven_consent`). Met `--accept-sources` en een verplichte `--policy` (wie besloot wanneer, op welke run) krijgen abonnees uit die bronnen mét opt-in-tijdstip bewijs `mailchimp:<source>`; dat is Jaaps besluit, geen afleiding. `--evidence <bestand>` blijft de route voor individueel bewijs; beide tegelijk mag niet.
+- **Register.** Met `--register-dir` schrijft de run `<T0>-dryrun.json` (T0, bronchecksums, aantallen, batchchecksums, diff; geen adressen) en de versleutelde bronexport als rollback-snapshot, beide `0600` in een `0700`-map op het duurzame volume. Die export verloopt niet automatisch. De sleutel staat in 1Password ("CIIIC consent export key (migratie-dry-run)", vault CIIIC); productie heeft hem niet in de env.
+
+Kandidaten dragen de Brevo-attributen voor de import: `FIRSTNAME`/`LASTNAME` uit Mailchimp-`FNAME`/`LNAME` en `LANGUAGE` als cijfer uit de live enumeratie. `diff` telt per taal en taalherkomst, kandidaten zonder voornaam (krijgen "Beste lezer,"), nieuwe versus al bestaande Brevo-contacten en suppressies per reden.
+
 ## Oude Mailchimp-afmeldingen en voorkeuren
 
 `scripts/consent-reconcile.mjs` leest Mailchimp uitsluitend met GET en schrijft lokaal in het versleutelde register. Het bewaart een versleuteld volledig broncheckpoint op `CONSENT_CHECKPOINT_PATH`, buiten git; daarnaast zijn `CONSENT_DB_PATH`, `CONSENT_KEY` en `CONSENT_HMAC_KEY` vereist. Vóór de eerste registermutatie wordt de volledige batch versleuteld naar `<CONSENT_CHECKPOINT_PATH>.pending` geschreven. Pas nadat alle idempotente registerevents zijn verwerkt, wordt het checkpoint atomair vervangen en het pending-bestand verwijderd. Bij herstel wordt eerst de oorspronkelijke batch met dezelfde event-ID’s en tijdgrenzen hervat; daarna pas wordt een nieuwere scan verwerkt. Bewaar checkpoint, pending-bestand en register samen bij back-up/herstel; verwijder nooit een pending-bestand om een fout te omzeilen. Een exclusief lockbestand beschermt scan en checkpoint tegen gelijktijdige runs; na een crash eerst vaststellen dat geen proces meer draait voordat het achtergebleven lock wordt verwijderd. De runner vergelijkt twee volledige bronlezingen voordat hij toepast. Plan deze taak onder afzonderlijk operationeel mandaat zolang oude footerlinks nog werken.
