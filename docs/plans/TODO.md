@@ -22,6 +22,14 @@ Goed gedaan: Jaap kiest per punt. (a) afwachten en hertesten (SpamCop-listings v
 
 Klaar als: per punt een besluit in `done/decisions.md`, en een hertest naar een mailbox.org-adres staat als `delivered` in de Brevo-eventlog.
 
+### 8. Editiecontract met ciiic-nieuwsbrief: PR open, daarna contract terugmelden
+
+**[flagship-review]** Item 8 adopteert briefing `2026-10-07--from-ciiic-nieuwsbrief--to-ciiic-automator--editieboekhouding-contract`. Gebouwd in PR #6: snapshot-endpoint, `delivered`/`sent` als receipt, afmelding via editiecampagne, suppressieroute (b) en `GET`-stand met `uncertain`; contract in het [runbook](../reference/ciiic-consent-preparation.md) § Editiecontract.
+
+Goed gedaan: na review en merge een briefing naar ciiic-nieuwsbrief met paden, velden en auth (`NEWSLETTER_EDITION_TOKEN`), zodat de aansluiting daar een `[workhorse]`-item wordt. Live gaat het pas mee met de activatie (#5): token in Coolify, Brevo-webhook ook voor `delivered`, `CIIIC_CONSENT_ROUTE=enabled`.
+
+Klaar als: PR gemerged en de terugmeldbriefing gepubliceerd.
+
 ## Recently done
 
 - 2026-10-08, PR #4 — #2 Radar-bronnen beslist: Springer en Nature aan in Coolify-env, EurekAlert/Immersive Wire/UploadVR uit de code (merge `d098761`, zie `done/decisions.md`).
