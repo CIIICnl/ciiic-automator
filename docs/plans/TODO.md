@@ -8,6 +8,14 @@ _(leeg)_
 
 ## Open werk
 
+### 7. Brevo-migratie: dry-run gedraaid, wacht op grondslagbesluit; daarna baseline-import
+
+**[flagship-review]** Briefing `2026-10-08--from-jaap-work--to-ciiic-automator--brevo-dryrun-en-baseline-import`; go/no-go **ma 19 okt**, eerste Brevo-send do 22 okt, delta-ronde wo 21 okt. Dry-run (hubplan § 5 stap 2) gedraaid op 10 okt, T0 `2026-10-10T17:23:23Z`, register `/data/consent/migration` op relaybot: 2.148 subscribed, 457 suppressies, 16 pending; alle subscribed hebben opt-in-tijdstip en -IP. Bronnen: Import 1.290, API - Generic 851, Hosted Signup Form 6, Admin Add 1. Jaap beslist welke bronnen als grondslag tellen (`--accept-sources`).
+
+Goed gedaan: na akkoord een definitieve dry-run met dat beleid, dan een importtool (bestaat nog niet; § "Baseline-import en rollback" in het runbook) die lijst "CIIIC nieuwsbrief" aanmaakt, eerst suppressies en dan kandidaten laadt zonder automations, en `compareBaselineReadback` draait.
+
+Klaar als: de Done-when van de briefing (read-back klopt, steekproef 10, geen mail verstuurd, lijst-id teruggemeld aan ciiic-nieuwsbrief).
+
 ### 5. Brevo-productiegebruik mist nog geverifieerd bevestigingsbewijs en consumerkoppelingen
 
 **[flagship-review]** (toestemming en migratie; apart uitvoeringsmandaat). De voorbereiding van #4 bevestigt geen DOI zonder autoritatief bewijs. Goed gedaan: werkende, bewezen koppeling van echte providerbevestiging naar het register, getekende Forms-feeds (ook de live Form43/feed7), daarna pas `CIIIC_CONSENT_ROUTE=enabled`, duurzame registerconfiguratie, reconciliation vóór T0 en nieuwsbriefboekhouding. [Runbook](../reference/ciiic-consent-preparation.md) beschrijft de poorten.
