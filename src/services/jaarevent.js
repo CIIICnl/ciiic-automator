@@ -218,7 +218,7 @@ export async function processRegistration(body, { authenticated = false, consent
   // GF webhook payload: field values by ID
   // Field 1: First name, 9: Last name, 2: Email, 3: Organisation, 11: Job title
   // Field 19: Stay informed (checkbox) — opt-in for Mailchimp newsletter
-  // Field 25: Attendance, 26: IX engagement, 21/22: Track choices
+  // Field 25: Attendance, 26: IX engagement
   const email = body['2'] || body.email;
   const firstName = body['1'] || body.first_name || '';
   const lastName = body['9'] || body.last_name || '';
