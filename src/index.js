@@ -14,6 +14,7 @@ import { processNewsletterOptin } from './services/newsletter-optin.js';
 import { targetsCiiicAudience } from './services/newsletter-optin.js';
 import { hasFieldValue, requireCiiicOptinSignature, subscriptionHttpStatus } from './services/consent/ingress.js';
 import { createMarketingRouter } from './services/consent/callbacks.js';
+import { createEditionRouter } from './services/consent/edition-routes.js';
 import { consentRouteEnabled } from './services/consent/activation.js';
 import { initDraftsDb, saveDraft, getDraft, deleteDraft, purgeExpired, healthCheck as draftsHealth } from './services/drafts.js';
 import { createTicket, testConnection as testIntake, TICKET_TYPES, TICKET_SYSTEMS, TICKET_PRIORITIES } from './services/intake.js';
@@ -34,6 +35,7 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/webhook/marketing', createMarketingRouter());
+app.use('/consent/editions', createEditionRouter());
 
 // Health check endpoint
 app.get('/', (req, res) => {

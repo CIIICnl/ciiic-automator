@@ -39,6 +39,7 @@ Live GET-controle, 6 oktober 2026: Coolify `relaybot` (`m7z1z547ie42j0d60fy0tvxx
 | `BREVO_DOI_TEMPLATE_ID`, `BREVO_DOI_REDIRECT_URL` | Geldige DOI-template en HTTPS-terugkeerpagina; accountcontrole vereist |
 | `BREVO_MARKETING_WEBHOOK_TOKEN` | Bearer-token voor de marketingcallback, buiten git beheren |
 | `CONSENT_EXPORT_KEY` | Apart 32-byte hexgeheim voor tijdelijke preflight-export |
+| `NEWSLETTER_EDITION_TOKEN` | Bearer-token van ciiic-nieuwsbrief voor `/consent/editions`; zonder token of zonder `CIIIC_CONSENT_ROUTE=enabled` antwoordt de route 503 |
 
 Het register versleutelt contactgegevens, bewijs en events. Bestanden krijgen beperkte rechten; een sleutelcontrole voorkomt dat gewijzigde sleutels een bestaand register stil onzichtbaar maken. Back-up en sleutelbewaring moeten samen worden geregeld vóór activatie. Sleutelrotatie is geen env-wijziging zonder datamigratie.
 
@@ -110,6 +111,25 @@ Er is bewust geen uitvoerbare providerimport in deze voorbereiding. Een volgend 
 
 ## Editiecontract met nieuwsbrief
 
-`src/services/consent/editions.js` bereidt één taaltoewijzing voor de volledige editie voor. Voor de eerste providerpoging mag de volledige snapshot vernieuwen. De eerste claim bevriest de snapshot; een taalwijziging geldt daarna voor de volgende editie. Iedere claim controleert actuele lokale suppressies. De persistente sleutel is editie + genormaliseerde contactidentiteit, onafhankelijk van taal of provider. Een onzekere provideruitkomst blijft gereserveerd en kan niet blind opnieuw worden verzonden.
+`src/services/consent/editions.js` is het grootboek: één taaltoewijzing per editie, sleutel editie + genormaliseerde contactidentiteit, onafhankelijk van taal of provider. Vóór de eerste providerpoging mag de snapshot vernieuwen; daarna is hij bevroren en geldt een taalwijziging pas voor de volgende editie.
 
-Deze module verstuurt niets en is nog niet op de nieuwsbriefapp aangesloten. Vóór echt verzenden moet die consumer de snapshot en boekhouding gebruiken én bewijzen dat Brevo de vastgelegde selectie respecteert. Dynamische segmenten alleen zijn onvoldoende. De productiepoort omvat actuele suppressies vlak vóór iedere taal-send, bewezen disjuncte NL/EN-selectie, ontbrekende/verouderde EN blokkeren en herstart-/rollbackcontrole.
+De nieuwsbrief is geen verzender die per contact claimt: zij maakt twee statische Brevo-editielijsten (NL, EN) en twee draftcampagnes, en een mens drukt in Brevo op verzenden. Het contract vult het grootboek daarom van twee kanten (`src/services/consent/newsletter-editions.js`, routes in `edition-routes.js`). Besloten op 10 oktober 2026 als antwoord op briefing `2026-10-07--from-ciiic-nieuwsbrief--to-ciiic-automator--editieboekhouding-contract`.
+
+**Authenticatie.** `Authorization: Bearer <NEWSLETTER_EDITION_TOKEN>`, timing-safe vergeleken. De router staat dicht (503) zolang `CIIIC_CONSENT_ROUTE` niet `enabled` is of het token ontbreekt; een fout token geeft 403. `editionId` is de batch-id van de nieuwsbriefexport (uuid; `[a-zA-Z0-9:_-]{1,100}`).
+
+**1. Snapshot bij klaarzetten.** `POST /consent/editions/{editionId}/snapshot`
+
+```json
+{ "documentId": "…", "campaigns": { "nl": 101, "en": 102 }, "lists": { "nl": 201, "en": 202 },
+  "recipients": [{ "email": "…", "language": "nl" }] }
+```
+
+`en` mag `null` zijn (campagne en lijst samen); `nl` is verplicht; lijst 2 en 3 worden geweigerd; een campagne mag maar bij één editie horen (anders 409 `campaign_conflict`). Geschiktheid komt uit het register: bevestigde toestemming, niet onderdrukt, geen voorkeurconflict. De taal komt uit de nieuwsbrief, omdat die bepaalt in welke Brevo-lijst iemand staat; een afwijking van de registertaal telt mee in `languageDiffersFromRegister` maar sluit niemand uit. Antwoord 200: `{ editionId, recipients, nl, en, excludedConflict, excludedMissingLanguage, excluded: [{ email, reason }], languageDiffersFromRegister }`, met `reason` uit `unknown_contact`, `suppressed`, `consent_not_confirmed`, `preference_conflict`. De nieuwsbrief haalt de uitgesloten adressen uit haar editielijsten vóór de send. Opnieuw aanroepen ververst de snapshot zolang de editie niet bevroren is; daarna 409 `{ error: "frozen", summary }`.
+
+**2. Verzendbewijs uit Brevo-marketingevents.** Op `POST /webhook/marketing/brevo` (bestaande Bearer-auth) geldt een `delivered`- of `sent`-event met een `camp_id` van een editie als providerreceipt: het contact gaat van `ready` naar `sent` en het eerste event bevriest de editie. Dubbele events zijn idempotent. Een levering buiten de snapshot, in de verkeerde taal of na een suppressie wordt niet als verzending geboekt maar als anomalie geteld (`delivered_outside_snapshot`, `delivered_wrong_language`, `delivered_after_suppression`). `delivered` voor andere campagnes blijft genegeerd en is nooit DOI-bewijs. Een `unsubscribe` vanuit een editiecampagne telt als CIIIC-afmelding, ook als `list_id` de editielijst noemt in plaats van de hoofdlijst. Brevo moet deze events voor marketingcampagnes naar de webhook sturen; dat instellen hoort bij de activatie.
+
+**3. Suppressies op de editielijsten (route b).** Elke suppressie die via de webhook binnenkomt (`unsubscribe`, `hard_bounce`, `spam`, `contact_deleted`) haalt de automator zelf uit iedere editielijst waar het contact nog `ready` staat (`POST /v3/contacts/lists/{id}/contacts/remove`). Pas na Brevo's akkoord gaat de regel naar `suppressed` en wordt `lastSuppressionAt` gezet; een mislukte verwijdering geeft 503, zodat Brevo het event opnieuw aanbiedt en de verwijdering alsnog afloopt. Brevo's 400 ("staat niet in de lijst") telt als gelukt. De handeling "suppressies toepassen" in de nieuwsbrief kan blijven als vangnet tot dit live is.
+
+**4. Stand en onzekere uitkomst.** `GET /consent/editions/{editionId}` geeft `editionSummary` (`frozen`, `nl`, `en`, `ready`, `unknown`, `sent`, `suppressed`) plus `documentId`, `campaigns`, `snapshotAt`, `lastEventAt`, `lastSuppressionAt`, `anomalies` en `uncertain`. `uncertain` is waar als de editie bevroren is, er nog `ready`-regels zijn en het laatste Brevo-event langer dan 24 uur geleden is: de campagne kan in de wachtrij staan, gepauzeerd zijn of half verzonden. Tijd maakt een regel nooit `sent`. Herverzenden gebeurt nooit vanuit de nieuwsbrief; het grootboek maakt de stand zichtbaar voor de mens die verzendt.
+
+Productiepoort vóór echt verzenden blijft: actuele suppressies vlak vóór iedere taal-send, bewezen disjuncte NL/EN-selectie, ontbrekende of verouderde EN blokkeren, en herstart-/rollbackcontrole. Tests: `tests/newsletter-editions.test.js`.
