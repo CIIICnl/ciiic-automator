@@ -22,7 +22,7 @@ async function cas(store, editionId, change) {
 }
 
 /** Set or refresh the one-language snapshot, only before any provider attempt. */
-export async function prepareEdition(store, editionId, contacts) {
+export async function prepareEdition(store, editionId, contacts, meta = undefined) {
   if (!editionId || !store?.getEdition || !store?.putEdition) throw new Error('Durable edition store required');
   const assignments = {};
   const seen = new Set();
@@ -44,7 +44,8 @@ export async function prepareEdition(store, editionId, contacts) {
         if (assignments[email]) assignments[email] = { ...assignments[email], outcome: 'suppressed' };
       }
     }
-    return { state: { frozen: false, assignments }, value: {
+    const keptMeta = meta ?? current?.meta;
+    return { state: { frozen: false, assignments, ...(keptMeta ? { meta: keptMeta } : {}) }, value: {
       recipients: Object.values(assignments).filter((row) => row.outcome === 'ready').length,
       nl: Object.values(assignments).filter((row) => row.outcome === 'ready' && row.language === 'nl').length,
       en: Object.values(assignments).filter((row) => row.outcome === 'ready' && row.language === 'en').length,

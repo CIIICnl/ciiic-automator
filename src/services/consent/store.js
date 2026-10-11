@@ -115,6 +115,10 @@ export function createConsentStore({ path: dbPath, encryptionKey, hmacKey, clock
     const row = db.prepare('SELECT version, encrypted FROM editions WHERE edition_id = ?').get(id);
     return row ? { version: row.version, state: decrypt(row.encrypted) } : null;
   };
+  // Few editions exist (one per newsletter issue), so a scan is cheaper than
+  // a plaintext campaign index next to the encrypted state.
+  const listEditions = () => db.prepare('SELECT edition_id, version, encrypted FROM editions').all()
+    .map(row => ({ editionId: row.edition_id, version: row.version, state: decrypt(row.encrypted) }));
   const listEventsSince = t0 => {
     const from = typeof t0 === 'number' ? t0 : Date.parse(t0);
     if (!Number.isFinite(from)) throw new Error('Invalid T0');
@@ -132,7 +136,7 @@ export function createConsentStore({ path: dbPath, encryptionKey, hmacKey, clock
     db.prepare('INSERT INTO editions(edition_id, version, encrypted) VALUES (?, ?, ?) ON CONFLICT(edition_id) DO UPDATE SET version=excluded.version, encrypted=excluded.encrypted').run(id, version, encrypt(state));
     return version;
   });
-  return { get, applyEvent, reserveRequest, listEventsSince, getEdition, putEdition, identity, close: () => db.close() };
+  return { get, applyEvent, reserveRequest, listEventsSince, getEdition, putEdition, listEditions, identity, close: () => db.close() };
 }
 
 let configuredStore;
