@@ -5,7 +5,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { buildMigrationPlan, compareBaselineReadback, languageFromInterests, LANGUAGE_INTERESTS,
-  changesSinceT0 } from '../src/services/consent/migration.js';
+  changesSinceT0, evidenceFromAcceptedSources } from '../src/services/consent/migration.js';
+import { resolveTargetList } from '../scripts/consent-preflight.mjs';
 import { reconcileMailchimpSnapshot } from '../src/services/consent/reconciliation.js';
 import { applyReconciliation, readCheckpoint, withCheckpointLock } from '../scripts/consent-reconcile.mjs';
 
@@ -156,4 +157,48 @@ test('checkpoint lock rejects concurrent writers and releases after completion',
   } finally {
     await fs.rm(directory, { recursive: true, force: true });
   }
+});
+
+test('dry-run candidates carry FIRSTNAME, LASTNAME and LANGUAGE; diff stays aggregate', () => {
+  const members = [
+    { ...member('nl@example.test'), merge_fields: { FNAME: ' Anna ', LNAME: 'Visser' }, source: 'Hosted Signup Form',
+      timestamp_opt: '2024-01-01T00:00:00Z', ip_opt: '192.0.2.1' },
+    { ...member('en@example.test', 'subscribed', { [LANGUAGE_INTERESTS.en]: true }), merge_fields: { FNAME: '' },
+      source: 'API - Generic', timestamp_opt: '2025-01-01T00:00:00Z' },
+    { ...member('noopt@example.test'), source: 'Import' },
+    member('off@example.test', 'unsubscribed'),
+  ];
+  const evidenceByEmail = evidenceFromAcceptedSources(members, ['Hosted Signup Form', 'API - Generic', 'Import'],
+    'Jaap akkoord op dry-run');
+  assert.deepEqual(Object.keys(evidenceByEmail).sort(), ['en@example.test', 'nl@example.test']);
+  assert.equal(evidenceByEmail['nl@example.test'].source, 'mailchimp:Hosted Signup Form');
+  const plan = buildMigrationPlan({ members, evidenceByEmail, checksumKey: 'fixture-secret', languageEnumeration,
+    brevoContacts: [{ email: 'nl@example.test', attributes: { FIRSTNAME: 'Annie', LANGUAGE: '2' } }] });
+  const nl = plan.rows.find((row) => row.email === 'nl@example.test');
+  const en = plan.rows.find((row) => row.email === 'en@example.test');
+  assert.deepEqual(nl.attributes, { FIRSTNAME: 'Anna', LASTNAME: 'Visser', LANGUAGE: 2 });
+  assert.deepEqual(en.attributes, { FIRSTNAME: '', LASTNAME: '', LANGUAGE: 1 });
+  assert.equal(plan.rows.find((row) => row.email === 'noopt@example.test').reason, 'unproven_consent');
+  assert.deepEqual(plan.diff, {
+    candidatesByLanguage: { nl: 1, en: 1 },
+    candidatesByLanguageSource: { 'default-nl': 1, 'mailchimp-group': 1 },
+    candidatesWithoutFirstName: 1, newBrevoContacts: 1, existingBrevoContacts: 1, existingFirstNameDiffers: 1,
+    suppressionsByReason: { unsubscribed: 1 },
+    consentBasis: {
+      'Hosted Signup Form': { subscribed: 1, withTimestampOpt: 1, withIpOpt: 1 },
+      'API - Generic': { subscribed: 1, withTimestampOpt: 1, withIpOpt: 0 },
+      Import: { subscribed: 1, withTimestampOpt: 0, withIpOpt: 0 },
+    },
+  });
+  assert.equal(JSON.stringify(plan.diff).includes('@'), false);
+  assert.throws(() => evidenceFromAcceptedSources(members, ['Import'], ' '), /policy notice/);
+});
+
+test('target list is looked up by name and never defaults to test list 3', () => {
+  assert.deepEqual(resolveTargetList([{ id: 3, name: 'Testlijst' }], undefined),
+    { name: 'CIIIC nieuwsbrief', exists: false, id: null });
+  assert.deepEqual(resolveTargetList([{ id: 3, name: 'Testlijst' }, { id: 12, name: 'CIIIC Nieuwsbrief', uniqueSubscribers: 0 }], undefined),
+    { name: 'CIIIC nieuwsbrief', exists: true, id: 12, subscribers: 0 });
+  assert.throws(() => resolveTargetList([{ id: 3, name: 'Testlijst' }, { id: 12, name: 'CIIIC nieuwsbrief' }], '3'), /does not match/);
+  assert.throws(() => resolveTargetList([{ id: 12, name: 'CIIIC nieuwsbrief' }, { id: 13, name: 'ciiic nieuwsbrief' }]), /ambiguous/);
 });
