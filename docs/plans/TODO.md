@@ -10,7 +10,7 @@ _(leeg)_
 
 ### 7. Brevo-migratie: dry-run gedraaid, wacht op grondslagbesluit; daarna baseline-import
 
-**[flagship-review]** Briefing `2026-10-08--from-jaap-work--to-ciiic-automator--brevo-dryrun-en-baseline-import`; go/no-go **ma 19 okt**, eerste Brevo-send do 22 okt, delta-ronde wo 21 okt. Dry-run (hubplan § 5 stap 2) gedraaid op 10 okt, T0 `2026-10-10T17:23:23Z`, register `/data/consent/migration` op relaybot: 2.148 subscribed, 457 suppressies, 16 pending; alle subscribed hebben opt-in-tijdstip en -IP. Bronnen: Import 1.290, API - Generic 851, Hosted Signup Form 6, Admin Add 1. Jaap beslist welke bronnen als grondslag tellen (`--accept-sources`).
+**[flagship-review] [beslissing Jaap]** Briefing `2026-10-08--from-jaap-work--to-ciiic-automator--brevo-dryrun-en-baseline-import`; go/no-go **ma 19 okt**, eerste Brevo-send do 22 okt, delta-ronde wo 21 okt. Dry-run-tooling gemerged in PR #5 (`84c30e7`, 11 okt). Dry-run (hubplan § 5 stap 2) gedraaid op 10 okt, T0 `2026-10-10T17:23:23Z`, register `/data/consent/migration` op relaybot: 2.148 subscribed, 457 suppressies, 16 pending; alle subscribed hebben opt-in-tijdstip en -IP. Bronnen: Import 1.290, API - Generic 851, Hosted Signup Form 6, Admin Add 1. **Jaap beslist welke bronnen als grondslag tellen** (`--accept-sources`); zonder dat besluit staat alles stil.
 
 Goed gedaan: na akkoord een definitieve dry-run met dat beleid, dan een importtool (bestaat nog niet; § "Baseline-import en rollback" in het runbook) die lijst "CIIIC nieuwsbrief" aanmaakt, eerst suppressies en dan kandidaten laadt zonder automations, en `compareBaselineReadback` draait.
 
@@ -30,18 +30,10 @@ Goed gedaan: Jaap kiest per punt. (a) afwachten en hertesten (SpamCop-listings v
 
 Klaar als: per punt een besluit in `done/decisions.md`, en een hertest naar een mailbox.org-adres staat als `delivered` in de Brevo-eventlog.
 
-### 8. Editiecontract met ciiic-nieuwsbrief: PR open, daarna contract terugmelden
-
-**[flagship-review]** Item 8 adopteert briefing `2026-10-07--from-ciiic-nieuwsbrief--to-ciiic-automator--editieboekhouding-contract`. Gebouwd in PR #6: snapshot-endpoint, `delivered`/`sent` als receipt, afmelding via editiecampagne, suppressieroute (b) en `GET`-stand met `uncertain`; contract in het [runbook](../reference/ciiic-consent-preparation.md) § Editiecontract.
-
-Goed gedaan: na review en merge een briefing naar ciiic-nieuwsbrief met paden, velden en auth (`NEWSLETTER_EDITION_TOKEN`), zodat de aansluiting daar een `[workhorse]`-item wordt. Live gaat het pas mee met de activatie (#5): token in Coolify, Brevo-webhook ook voor `delivered`, `CIIIC_CONSENT_ROUTE=enabled`.
-
-Klaar als: PR gemerged en de terugmeldbriefing gepubliceerd.
-
 ## Recently done
 
+- 2026-10-11, PR #6 — #8 editiecontract met ciiic-nieuwsbrief: snapshot-endpoint, Brevo-receipts, suppressieroute (b), `GET`-stand; inert tot activatie (#5). Terugmeldbriefing gepubliceerd, briefing gesloten (merge `fe9f3ea`). Write-up `done/2026-10.md`.
+- 2026-10-11, PR #5 — dry-run-tooling voor de Brevo-migratie (diff, grondslag per bron, doellijst, T0-register); het item zelf (#7) blijft open tot Jaaps grondslagbesluit (merge `84c30e7`).
 - 2026-10-08, PR #4 — #2 Radar-bronnen beslist: Springer en Nature aan in Coolify-env, EurekAlert/Immersive Wire/UploadVR uit de code (merge `d098761`, zie `done/decisions.md`).
 - 2026-10-06, #1 draft-resume in productie gerookt: `/data`-mount bestaat, save → mail → link → `GET /draft/:token` werkt; deliverability-bevinding werd #6. Write-up `done/2026-10.md`.
 - 2026-10-06, PR #2 — #4 consentvoorbereiding: provideradapter, versleuteld register, reconciliation/preflight en getekende Forms-ingress, alles achter `CIIIC_CONSENT_ROUTE` (default uit = oud gedrag). Activatie is #5. Write-up `done/2026-10.md`.
-- 2026-10-06, PR #2 — #3 regressietests: `npm test` met 46 tests over signing, register, migratie en routewiring; CI Node 20/22.
-- 2026-09 — Draft-resume endpoints voor publicvalues.ciiic.nl (brief afgerond, zie `done/register.md`)

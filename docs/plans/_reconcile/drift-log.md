@@ -20,10 +20,14 @@ Gesloten: TODO 1. De `[STALE-PLAN]` over TODO 1 is daarmee opgelost en weg. Nieu
 
 Gesloten: TODO 2 (register + write-up). Recently done teruggebracht naar vijf regels. Geen restwerk zonder adres: de scan-controle van 9 okt staat in de handoff. PR #3 (`e57d7be`, briefing LANGUAGE, geen TODO-item) kreeg geen eigen log-entry; nu meegeteld. Claimbord leeg, `repo-hygiene check` schoon, TODO.md 2 items, ruim onder budget. Geen `[CONFLICT]`. Drempel: 0 open signalen, 3 merges sinds nulpunt, niet gehaald.
 
+### 2026-10-11 — PR #5 (merge `84c30e7`) en PR #6 (merge `fe9f3ea`)
+
+Gesloten: TODO 8 (register + write-up; briefing editieboekhouding-contract gesloten met bewijs, terugmeldbriefing naar ciiic-nieuwsbrief gepubliceerd). PR #5 sluit geen item: TODO 7 blijft open tot Jaaps grondslagbesluit, tekst bijgewerkt; de review-fix `429d32c` is meegeleverd. Recently done op vijf regels. Restwerk met adres: baseline-import in TODO 7, activatie in TODO 5. Radar-nacontrole en de stale `NOTION_CONTACTEN_DS_IDS`-default blijven in het doorgeefblok van de handoff, zoals bij PR #4; geen eigen item (bijvangst). Claimbord leeg, `repo-hygiene check` schoon, TODO.md 3 items / ~4,9 KB. Geen `[CONFLICT]`, geen `[DONE?]`, `briefs/` leeg. Drempel: 0 open signalen, 5 merges sinds nulpunt (#2, #3, #4, #5, #6), niet gehaald.
+
 ## Laatste diepe audit
 
 Nog geen. Repo aangesloten op de werkwijze op 2026-09-10 via `/workflow-init`; dat telt als nulpunt, niet als audit.
 
 ## Nudges-teller
 
-Merges sinds laatste audit: 3
+Merges sinds laatste audit: 5
