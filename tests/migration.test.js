@@ -200,5 +200,7 @@ test('target list is looked up by name and never defaults to test list 3', () =>
   assert.deepEqual(resolveTargetList([{ id: 3, name: 'Testlijst' }, { id: 12, name: 'CIIIC Nieuwsbrief', uniqueSubscribers: 0 }], undefined),
     { name: 'CIIIC nieuwsbrief', exists: true, id: 12, subscribers: 0 });
   assert.throws(() => resolveTargetList([{ id: 3, name: 'Testlijst' }, { id: 12, name: 'CIIIC nieuwsbrief' }], '3'), /does not match/);
+  assert.throws(() => resolveTargetList([{ id: 3, name: 'Testlijst' }], '3'), /does not match/);
+  assert.equal(resolveTargetList([{ id: 12, name: 'CIIIC nieuwsbrief' }], '12').id, 12);
   assert.throws(() => resolveTargetList([{ id: 12, name: 'CIIIC nieuwsbrief' }, { id: 13, name: 'ciiic nieuwsbrief' }]), /ambiguous/);
 });

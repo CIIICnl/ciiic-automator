@@ -68,11 +68,10 @@ async function brevoContacts() {
 export function resolveTargetList(lists, configuredId) {
   const byName = lists.filter((list) => String(list.name ?? '').trim().toLowerCase() === TARGET_LIST_NAME.toLowerCase());
   if (byName.length > 1) throw new Error('Brevo target list name is ambiguous');
-  if (configuredId) {
-    const configured = lists.find((list) => Number(list.id) === Number(configuredId));
-    if (!configured || (byName[0] && Number(byName[0].id) !== Number(configuredId))) {
-      throw new Error('BREVO_CIIIC_LIST_ID does not match the CIIIC nieuwsbrief list');
-    }
+  // A configured id must point at the list found by name; with no such list
+  // there is nothing it can legitimately point at (it would be the test list).
+  if (configuredId && (!byName[0] || Number(byName[0].id) !== Number(configuredId))) {
+    throw new Error('BREVO_CIIIC_LIST_ID does not match the CIIIC nieuwsbrief list');
   }
   const list = byName[0];
   return list ? { name: TARGET_LIST_NAME, exists: true, id: Number(list.id), subscribers: list.uniqueSubscribers ?? list.totalSubscribers ?? null }
