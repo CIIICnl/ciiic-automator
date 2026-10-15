@@ -26,11 +26,12 @@ function fixture() {
     cleanup: () => { store.close(); fs.rmSync(dir, { recursive: true, force: true }); } };
 }
 
-async function withApp(f, { enabled = true, removals = [], failRemoval = () => false } = {}, run) {
+async function withApp(f, { enabled = true, removals = [], failRemoval = () => false, inList = () => true } = {}, run) {
   const app = express();
   app.use(express.json());
   const removeFromList = async (listId, email) => {
     if (failRemoval()) throw new Error('Brevo list removal failed');
+    if (!inList(email)) return false;
     removals.push([listId, email]);
     return true;
   };
@@ -131,6 +132,52 @@ test('unsubscribe from an edition campaign suppresses and removes from the editi
       // A later delivery to that address is an anomaly, not a send.
       await hook({ event: 'delivered', email: 'en@example.test', camp_id: 102, ts_event: ts(T0) + 60 });
       assert.deepEqual((await status()).anomalies, { delivered_after_suppression: 1 });
+    });
+  } finally { f.cleanup(); }
+});
+
+test('one external and one newsletter removal are counted once each, per language, across a refresh', async () => {
+  const f = fixture();
+  for (const [email, language] of [['nl-a@example.test', 'nl'], ['nl-b@example.test', 'nl'], ['en-c@example.test', 'en'], ['en-d@example.test', 'en']]) {
+    f.confirm(email, language);
+  }
+  // Brevo answers 400 ("not in the list") for nl-b: the newsletter removed it first.
+  const inList = new Set(['nl-a@example.test', 'en-c@example.test', 'en-d@example.test']);
+  const removals = [];
+  const all = [{ email: 'nl-a@example.test', language: 'nl' }, { email: 'nl-b@example.test', language: 'nl' },
+    { email: 'en-c@example.test', language: 'en' }, { email: 'en-d@example.test', language: 'en' }];
+  try {
+    await withApp(f, { removals, inList: (email) => inList.has(email) }, async ({ snapshot, status, hook }) => {
+      await snapshot(snapshotBody(all));
+      // External: en-c unsubscribes; route (b) takes it off edition list 202.
+      await hook({ event: 'unsubscribe', email: 'en-c@example.test', camp_id: 102, list_id: [202], ts_event: ts(T0) });
+      // Handmatig: the newsletter takes nl-b off list 201 itself (its removed_total = 1),
+      // and Brevo's unsubscribe for nl-b reaches us afterwards.
+      inList.delete('nl-b@example.test');
+      await hook({ event: 'unsubscribe', email: 'nl-b@example.test', list_id: [44], ts_event: ts(T0) + 60 });
+      let current = await status();
+      assert.equal(current.suppressed, 2);
+      assert.equal(current.removedByAutomator, 1);
+      assert.deepEqual(removals, [[202, 'en-c@example.test']]);
+      assert.deepEqual(current.byLanguage.en, { ready: 1, unknown: 0, sent: 0, suppressed: 1, removedByAutomator: 1,
+        lastSuppressionAt: new Date(ts(T0) * 1000).toISOString() });
+      assert.deepEqual(current.byLanguage.nl, { ready: 1, unknown: 0, sent: 0, suppressed: 1, removedByAutomator: 0,
+        lastSuppressionAt: new Date((ts(T0) + 60) * 1000).toISOString() });
+      // Draft refresh from the main list re-adds both: they come back as
+      // excluded, the ledger keeps them suppressed and keeps the times.
+      const refreshed = await (await snapshot(snapshotBody(all))).json();
+      assert.deepEqual(refreshed.excluded.map((row) => [row.email, row.reason]).sort(),
+        [['en-c@example.test', 'suppressed'], ['nl-b@example.test', 'suppressed']]);
+      assert.equal(refreshed.recipients, 2);
+      current = await status();
+      assert.equal(current.ready, 2);
+      assert.equal(current.suppressed, 2);
+      assert.equal(current.byLanguage.en.removedByAutomator, 1);
+      assert.equal(current.byLanguage.nl.removedByAutomator, 0);
+      assert.equal(current.lastSuppressionAt, new Date((ts(T0) + 60) * 1000).toISOString());
+      // A refresh that leaves them out entirely does not reset the counter either.
+      await snapshot(snapshotBody([all[0], all[3]]));
+      assert.equal((await status()).suppressed, 2);
     });
   } finally { f.cleanup(); }
 });

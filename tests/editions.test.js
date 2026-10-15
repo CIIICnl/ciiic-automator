@@ -45,7 +45,9 @@ test('one edition freezes both languages and unknown provider response blocks cr
   assert.deepEqual(await claimEditionRecipient(db, 'edition-1', 'nl@example.test', 'nl', 'mailchimp'),
     { allowed: false, reason: 'sent' });
   assert.deepEqual(await editionSummary(db, 'edition-1'),
-    { frozen: true, nl: 1, en: 1, ready: 1, unknown: 0, sent: 1, suppressed: 0 });
+    { frozen: true, nl: 1, en: 1, ready: 1, unknown: 0, sent: 1, suppressed: 0, removedByAutomator: 0, byLanguage: {
+      nl: { ready: 0, unknown: 0, sent: 1, suppressed: 0, removedByAutomator: 0 },
+      en: { ready: 1, unknown: 0, sent: 0, suppressed: 0, removedByAutomator: 0 } } });
 });
 
 test('current suppression removes an assigned recipient before provider claim', async () => {

@@ -105,8 +105,11 @@ export async function registerSnapshot(store, editionId, body, { now = () => Dat
     if (record.language && record.language !== recipient.language) languageDiffersFromRegister += 1;
     contacts.push({ email: recipient.email, language: recipient.language, consent: 'confirmed' });
   }
+  // Suppression times carry over a refresh, like the suppressed entries do.
+  const previous = existing?.state?.meta ?? {};
   const meta = { documentId: snapshot.documentId, campaigns: snapshot.campaigns, lists: snapshot.lists,
-    snapshotAt: new Date(now()).toISOString(), lastEventAt: null, lastSuppressionAt: null, anomalies: {} };
+    snapshotAt: new Date(now()).toISOString(), lastEventAt: null, lastSuppressionAt: previous.lastSuppressionAt ?? null,
+    lastSuppressionAtByLanguage: { nl: null, en: null, ...previous.lastSuppressionAtByLanguage }, anomalies: {} };
   const counts = await prepareEdition(store, editionId, contacts, meta);
   return { ...counts, excluded, languageDiffersFromRegister };
 }
@@ -168,11 +171,16 @@ export async function applyEditionSuppression(store, rawEmail, { removeFromList,
     const entry = edition.state?.assignments?.[email];
     if (!entry || entry.outcome !== 'ready') continue;
     const listId = edition.state.meta?.lists?.[entry.language];
-    if (listId) await removeFromList(listId, email);
+    // true = Brevo removed it, false = it was no longer in the list (the
+    // newsletter got there first). Only the first counts as our removal.
+    const removedNow = listId ? await removeFromList(listId, email) : false;
     await updateEdition(store, edition.editionId, (state) => {
       if (state.assignments[email]?.outcome !== 'ready') return false;
       state.assignments[email].outcome = 'suppressed';
+      state.assignments[email].removedBy = removedNow === true ? 'automator' : 'absent';
       state.meta.lastSuppressionAt = occurredAt;
+      state.meta.lastSuppressionAtByLanguage = { nl: null, en: null, ...state.meta.lastSuppressionAtByLanguage,
+        [entry.language]: occurredAt };
       return true;
     });
     removed += 1;
@@ -188,6 +196,13 @@ export async function editionStatus(store, editionId, { now = () => Date.now() }
   const lastSignal = Date.parse(meta.lastEventAt ?? '') || null;
   const uncertain = Boolean(edition.state.frozen && summary.ready > 0 && lastSignal &&
     now() - lastSignal > UNCERTAIN_AFTER_MS);
+  // `suppressed` is a status (in this edition and now suppressed, whoever
+  // took it off the list); `removedByAutomator` counts only removals Brevo
+  // executed for us. Removals the newsletter does itself are never in here;
+  // see the runbook § Boekhoudafspraak.
+  for (const language of LANGUAGES) {
+    summary.byLanguage[language].lastSuppressionAt = meta.lastSuppressionAtByLanguage?.[language] ?? null;
+  }
   return { ...summary, documentId: meta.documentId ?? null, campaigns: meta.campaigns ?? null,
     snapshotAt: meta.snapshotAt ?? null, lastEventAt: meta.lastEventAt ?? null,
     lastSuppressionAt: meta.lastSuppressionAt ?? null, anomalies: meta.anomalies ?? {}, uncertain };

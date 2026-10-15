@@ -39,10 +39,11 @@ export async function prepareEdition(store, editionId, contacts, meta = undefine
   }
   return cas(store, editionId, async (current) => {
     if (current?.frozen) throw new Error('Edition is frozen after first provider attempt');
+    // A suppression survives every refresh, also when the refreshed draft
+    // no longer (or again) holds the contact: the counter is per edition,
+    // not per snapshot.
     for (const [email, entry] of Object.entries(current?.assignments ?? {})) {
-      if (entry.outcome === 'suppressed') {
-        if (assignments[email]) assignments[email] = { ...assignments[email], outcome: 'suppressed' };
-      }
+      if (entry.outcome === 'suppressed') assignments[email] = entry;
     }
     const keptMeta = meta ?? current?.meta;
     return { state: { frozen: false, assignments, ...(keptMeta ? { meta: keptMeta } : {}) }, value: {
@@ -108,10 +109,16 @@ export async function confirmEditionSend(store, editionId, emailInput, provider,
 export async function editionSummary(store, editionId) {
   const state = (await store.getEdition(editionId))?.state;
   if (!state) return null;
-  const summary = { frozen: state.frozen, nl: 0, en: 0, ready: 0, unknown: 0, sent: 0, suppressed: 0 };
+  const outcomes = () => ({ ready: 0, unknown: 0, sent: 0, suppressed: 0, removedByAutomator: 0 });
+  const summary = { frozen: state.frozen, nl: 0, en: 0, ...outcomes(), byLanguage: { nl: outcomes(), en: outcomes() } };
   for (const entry of Object.values(state.assignments)) {
     summary[entry.language] += 1;
     summary[entry.outcome] += 1;
+    summary.byLanguage[entry.language][entry.outcome] += 1;
+    if (entry.removedBy === 'automator') {
+      summary.removedByAutomator += 1;
+      summary.byLanguage[entry.language].removedByAutomator += 1;
+    }
   }
   return summary;
 }

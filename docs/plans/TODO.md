@@ -32,6 +32,7 @@ Klaar als: per punt een besluit in `done/decisions.md`, en een hertest naar een 
 
 ## Recently done
 
+- 2026-10-15 — suppressieboekhouding editiecontract: `byLanguage`-tellers, `removedByAutomator`, suppressies overleven een snapshotverversing; afspraak in runbook § Editiecontract punt 5. Briefing beantwoord en gesloten.
 - 2026-10-11, PR #6 — #8 editiecontract met ciiic-nieuwsbrief: snapshot-endpoint, Brevo-receipts, suppressieroute (b), `GET`-stand; inert tot activatie (#5). Terugmeldbriefing gepubliceerd, briefing gesloten (merge `fe9f3ea`). Write-up `done/2026-10.md`.
 - 2026-10-11, PR #5 — dry-run-tooling voor de Brevo-migratie (diff, grondslag per bron, doellijst, T0-register); het item zelf (#7) blijft open tot Jaaps grondslagbesluit (merge `84c30e7`).
 - 2026-10-08, PR #4 — #2 Radar-bronnen beslist: Springer en Nature aan in Coolify-env, EurekAlert/Immersive Wire/UploadVR uit de code (merge `d098761`, zie `done/decisions.md`).
