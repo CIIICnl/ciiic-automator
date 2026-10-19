@@ -8,13 +8,13 @@ _(leeg)_
 
 ## Open werk
 
-### 7. Brevo-migratie: dry-run gedraaid, wacht op grondslagbesluit; daarna baseline-import
+### 7. Brevo-baseline wacht op akkoord op het definitieve diff en de importtool
 
-**[flagship-review] [beslissing Jaap]** Briefing `2026-10-08--from-jaap-work--to-ciiic-automator--brevo-dryrun-en-baseline-import`; go/no-go **ma 19 okt**, eerste Brevo-send do 22 okt, delta-ronde wo 21 okt. Dry-run-tooling gemerged in PR #5 (`84c30e7`, 11 okt). Dry-run (hubplan § 5 stap 2) gedraaid op 10 okt, T0 `2026-10-10T17:23:23Z`, register `/data/consent/migration` op relaybot: 2.148 subscribed, 457 suppressies, 16 pending; alle subscribed hebben opt-in-tijdstip en -IP. Bronnen: Import 1.290, API - Generic 851, Hosted Signup Form 6, Admin Add 1. **Jaap beslist welke bronnen als grondslag tellen** (`--accept-sources`); zonder dat besluit staat alles stil.
+**[flagship-review]** (migratie van persoonsgegevens). Grondslagbesluit 19 oktober: alle vier bronnen tellen mee; die beslissingsblokkade is weg. Definitieve dry-run, T0 `2026-10-19T17:36:35.815Z`: **2.161 kandidaten (2.090 NL, 71 EN), 464 suppressies, 24 pending, 0 quarantaine**; 84 kandidaten zonder voornaam. Doellijst bestaat nog niet. [Diff en bewijs](../reports/brevo-migration-dryrun-2026-10-19.md); beveiligd register `/data/consent/migration` op relaybot.
 
-Goed gedaan: na akkoord een definitieve dry-run met dat beleid, dan een importtool (bestaat nog niet; § "Baseline-import en rollback" in het runbook) die lijst "CIIIC nieuwsbrief" aanmaakt, eerst suppressies en dan kandidaten laadt zonder automations, en `compareBaselineReadback` draait.
+Goed gedaan: na Jaaps akkoord op dit concrete diff een gereviewde, hervatbare importtool uitvoeren, suppressies eerst, volledige read-back en bewijs zonder mail. [Uitvoerbrief](briefs/brevo-baseline-import.md). Eerste Brevo-send **29 oktober**; voorgesteld go/no-go **26 oktober**, delta **28 oktober**. Writers blijven tot na 29 oktober Mailchimp. Opdrachten: `2026-10-08--from-jaap-work--to-ciiic-automator--brevo-dryrun-en-baseline-import.md` en `2026-10-19--from-_meta--to-ciiic-automator--brevo-grondslag-en-nieuwe-datum.md`.
 
-Klaar als: de Done-when van de briefing (read-back klopt, steekproef 10, geen mail verstuurd, lijst-id teruggemeld aan ciiic-nieuwsbrief).
+Klaar als: diff-akkoord geregistreerd, baseline volledig teruggelezen, idempotentie en steekproef tien bewezen, `LANGUAGE`/namen gevuld, geen importmail, werkelijk lijst-ID en bevestigde delta-datum gepubliceerd aan ciiic-nieuwsbrief; beide briefings met bewijs geleverd.
 
 ### 5. Brevo-productiegebruik mist nog geverifieerd bevestigingsbewijs en consumerkoppelingen
 
@@ -22,13 +22,13 @@ Klaar als: de Done-when van de briefing (read-back klopt, steekproef 10, geen ma
 
 Klaar als: afzonderlijk geautoriseerde activatie bewijst de hele DOI-keten en geplande reconciliation; consumercontracten zijn geleverd. Een baseline-import, cutover of echte verzending blijft een apart besluit op een concreet gecontroleerd diff.
 
-### 6. Brevo-mail uit de bot strandt bij ontvangers die SpamCop gebruiken
+### 6. Herstel van Brevo-bezorging bij mailbox.org is nog niet bewezen
 
-**[workhorse] [beslissing Jaap]** De smoke test van 6 oktober (#1) vond twee dingen in de Brevo-transactiemail, die álle botmail raken (draft-resume, eventbevestigingen). (a) Het gedeelde Brevo-IP `77.32.148.23` stond op SpamCop; mailbox.org weigerde de mail aan jaap@jaapstronks.nl met `554 5.7.1 ... blocked by RBL` (softBounce in de Brevo-eventlog), terwijl Gmail en M365 hem wel afleverden. `POST /draft/save` geeft dan gewoon `ok: true` terug: de gebruiker wacht op een mail die nooit komt. (b) Brevo-clicktracking herschrijft de magic link naar `sendibt3.com`, dus de geheime draft-token gaat via Brevo's tracker.
+**[workhorse] [beslissing Jaap]** Botmail kan mislukken terwijl `/draft/save` `ok: true` teruggeeft. Logmeting 19 oktober: adresselectie 30 september t/m 19 oktober bevat vier events (twee requests/twee softBounces), laatste poging 6 oktober; geen nieuwere poging of `delivered`. IP `77.32.148.23` kreeg op 30 september en 6 oktober `554 5.7.1 ... blocked by RBL`; op 7 oktober ook een hostkarma-afwijzing bij hr.nl. Afleveringen via `.24` bewijzen geen herstel. Technisch eigenaar blijft deze repo, TODO #6; [bewijs en providerroute](../reports/brevo-rbl-status-2026-10-19.md).
 
-Goed gedaan: Jaap kiest per punt. (a) afwachten en hertesten (SpamCop-listings verlopen vanzelf), een dedicated IP bij Brevo, of de bot via een andere verzender; (b) clicktracking voor transactiemail uitzetten in het Brevo-account (raakt ook de statistiek van andere botmails) of per mail een opt-out als Brevo die ondersteunt.
+Goed gedaan: na Jaaps mandaat Brevo-support de bounce/message-ID's laten onderzoeken (gedeelde pool/reputatie/delisting), daarna een afzonderlijk afgesproken mailbox.org-hertest. mailbox.org-ticket 8785440 verwijst naar de verzendprovider en biedt geen allowlist-oplossing. Apart besluit nodig: clicktracking op de magic link uitschakelen (de geheime token gaat nu via `sendibt3.com`). Geen supportbericht, testmail of betaalde wijziging zonder expliciet mandaat.
 
-Klaar als: per punt een besluit in `done/decisions.md`, en een hertest naar een mailbox.org-adres staat als `delivered` in de Brevo-eventlog.
+Klaar als: providerroute en clicktrackingbesluit in `done/decisions.md`, en de geautoriseerde hertest staat als `delivered` met sender-IP in Brevo's eventlog.
 
 ## Recently done
 
