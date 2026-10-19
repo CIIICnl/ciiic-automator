@@ -8,13 +8,13 @@ _(leeg)_
 
 ## Open werk
 
-### 7. Brevo-baseline wacht op akkoord op het definitieve diff en de importtool
+### 7. Brevo-baseline wacht op diff-akkoord en importtool
 
-**[flagship-review]** (migratie van persoonsgegevens). Grondslagbesluit 19 oktober: alle vier bronnen tellen mee; die beslissingsblokkade is weg. Definitieve dry-run, T0 `2026-10-19T17:36:35.815Z`: **2.161 kandidaten (2.090 NL, 71 EN), 464 suppressies, 24 pending, 0 quarantaine**; 84 kandidaten zonder voornaam. Doellijst bestaat nog niet. [Diff en bewijs](../reports/brevo-migration-dryrun-2026-10-19.md); beveiligd register `/data/consent/migration` op relaybot.
+**[flagship-review] [beslissing Jaap]** Grondslagbesluit 19 oktober vastgelegd; dry-run T0 `2026-10-19T17:36:35.815Z`: 2.161 kandidaten (2.090 NL, 71 EN), 464 suppressies, 24 pending, 0 quarantaine. Doellijst ontbreekt. [Diff en bewijs](../reports/brevo-migration-dryrun-2026-10-19.md); [uitvoerbrief](briefs/brevo-baseline-import.md) bevat bronopdrachten en alle acceptatiecriteria.
 
-Goed gedaan: na Jaaps akkoord op dit concrete diff een gereviewde, hervatbare importtool uitvoeren, suppressies eerst, volledige read-back en bewijs zonder mail. [Uitvoerbrief](briefs/brevo-baseline-import.md). Eerste Brevo-send **29 oktober**; voorgesteld go/no-go **26 oktober**, delta **28 oktober**. Writers blijven tot na 29 oktober Mailchimp. Opdrachten: `2026-10-08--from-jaap-work--to-ciiic-automator--brevo-dryrun-en-baseline-import.md` en `2026-10-19--from-_meta--to-ciiic-automator--brevo-grondslag-en-nieuwe-datum.md`.
+Goed gedaan: hervatbare importtool bouwen; na onafhankelijke review en Jaaps diff-akkoord importeren. Eerste send 29 oktober; voorstel go/no-go 26 oktober, delta 28 oktober. Writers blijven tot na 29 oktober Mailchimp.
 
-Klaar als: diff-akkoord geregistreerd, baseline volledig teruggelezen, idempotentie en steekproef tien bewezen, `LANGUAGE`/namen gevuld, geen importmail, werkelijk lijst-ID en bevestigde delta-datum gepubliceerd aan ciiic-nieuwsbrief; beide briefings met bewijs geleverd.
+Klaar als: diff-akkoord, volledige read-back met taal/namen/suppressies, idempotentie, steekproef tien en geen importmail bewezen; lijst-ID en bevestigde delta-datum gepubliceerd; migratiebriefings van 8 en 19 oktober met bewijs geleverd.
 
 ### 5. Brevo-productiegebruik mist nog geverifieerd bevestigingsbewijs en consumerkoppelingen
 
@@ -24,17 +24,16 @@ Klaar als: afzonderlijk geautoriseerde activatie bewijst de hele DOI-keten en ge
 
 ### 6. Herstel van Brevo-bezorging bij mailbox.org is nog niet bewezen
 
-**[workhorse] [beslissing Jaap]** Botmail kan mislukken terwijl `/draft/save` `ok: true` teruggeeft. Logmeting 19 oktober: adresselectie 30 september t/m 19 oktober bevat vier events (twee requests/twee softBounces), laatste poging 6 oktober; geen nieuwere poging of `delivered`. IP `77.32.148.23` kreeg op 30 september en 6 oktober `554 5.7.1 ... blocked by RBL`; op 7 oktober ook een hostkarma-afwijzing bij hr.nl. Afleveringen via `.24` bewijzen geen herstel. Technisch eigenaar blijft deze repo, TODO #6; [bewijs en providerroute](../reports/brevo-rbl-status-2026-10-19.md).
+**[workhorse] [beslissing Jaap]** Logmeting 19 oktober: vier adres-events (twee requests/twee softBounces), laatste poging 6 oktober, geen delivered. IP `77.32.148.23` kreeg RBL-afwijzingen en op 7 oktober ook hostkarma bij hr.nl. Aflevering via `.24` bewijst geen herstel. Eigenaar: ciiic-automator TODO #6. [Volledig bewijs en providerroute](../reports/brevo-rbl-status-2026-10-19.md).
 
-Goed gedaan: na Jaaps mandaat Brevo-support de bounce/message-ID's laten onderzoeken (gedeelde pool/reputatie/delisting), daarna een afzonderlijk afgesproken mailbox.org-hertest. mailbox.org-ticket 8785440 verwijst naar de verzendprovider en biedt geen allowlist-oplossing. Apart besluit nodig: clicktracking op de magic link uitschakelen (de geheime token gaat nu via `sendibt3.com`). Geen supportbericht, testmail of betaalde wijziging zonder expliciet mandaat.
+Goed gedaan: met Jaaps mandaat Brevo-support inschakelen (mailbox.org-ticket 8785440 verwijst naar verzendprovider), daarna afzonderlijk afgesproken hertest. Apart besluit: clicktracking op de magic link uitschakelen. Geen supportbericht, testmail of betaalde wijziging zonder mandaat.
 
-Klaar als: providerroute en clicktrackingbesluit in `done/decisions.md`, en de geautoriseerde hertest staat als `delivered` met sender-IP in Brevo's eventlog.
+Klaar als: providerroute en clicktrackingbesluit in `done/decisions.md`, geautoriseerde hertest als `delivered` met sender-IP in Brevo-eventlog.
 
 ## Recently done
 
+- 2026-10-19, PR #7 (`e32df11`): Brevo-grondslagbesluit, definitieve dry-run en RBL-logmeting gereviewd; RBL-briefing geleverd. TODO #7/#6 blijven open; importtool gebrieft.
 - 2026-10-15 — suppressieboekhouding editiecontract: `byLanguage`-tellers, `removedByAutomator`, suppressies overleven een snapshotverversing; afspraak in runbook § Editiecontract punt 5. Briefing beantwoord en gesloten.
 - 2026-10-11, PR #6 — #8 editiecontract met ciiic-nieuwsbrief: snapshot-endpoint, Brevo-receipts, suppressieroute (b), `GET`-stand; inert tot activatie (#5). Terugmeldbriefing gepubliceerd, briefing gesloten (merge `fe9f3ea`). Write-up `done/2026-10.md`.
 - 2026-10-11, PR #5 — dry-run-tooling voor de Brevo-migratie (diff, grondslag per bron, doellijst, T0-register); het item zelf (#7) blijft open tot Jaaps grondslagbesluit (merge `84c30e7`).
 - 2026-10-08, PR #4 — #2 Radar-bronnen beslist: Springer en Nature aan in Coolify-env, EurekAlert/Immersive Wire/UploadVR uit de code (merge `d098761`, zie `done/decisions.md`).
-- 2026-10-06, #1 draft-resume in productie gerookt: `/data`-mount bestaat, save → mail → link → `GET /draft/:token` werkt; deliverability-bevinding werd #6. Write-up `done/2026-10.md`.
-- 2026-10-06, PR #2 — #4 consentvoorbereiding: provideradapter, versleuteld register, reconciliation/preflight en getekende Forms-ingress, alles achter `CIIIC_CONSENT_ROUTE` (default uit = oud gedrag). Activatie is #5. Write-up `done/2026-10.md`.

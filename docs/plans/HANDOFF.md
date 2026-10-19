@@ -1,24 +1,23 @@
-# Review-en-merge: PR #7, Brevo-besluit, definitieve dry-run en bouncebewijs
+# Uitvoer: Brevo-baseline-importtool bouwen (TODO #7)
 
-Rol: stuur. Tier: `flagship-review` (migratievoorbereiding); onafhankelijke review door het flagship.
+Rol: uitvoer. Tier: `flagship-review`; bouw op workhorse, daarna onafhankelijke flagship-review en merge.
 
 ## Stand bij vertrek
 
-19 oktober 2026, Sol (uitvoer). Main `5ed2927`; branch `docs/brevo-meta-19oct`, inhoudscommit `ba2878f`; [PR #7](https://github.com/CIIICnl/ciiic-automator/pull/7) wacht op review. Geen runtimecode gewijzigd.
+19 oktober 2026, onafhankelijke review van [PR #7](https://github.com/CIIICnl/ciiic-automator/pull/7) afgerond en gemerged als `e32df11`. Documenten getoetst aan beide briefings van 19 oktober en het RBL-bronrapport op jaap-work origin/main. CI Node 20/22 groen; geen runtimewijziging. De administratieve RBL-briefing is met bewijs geleverd; TODO #6 blijft open.
 
-- Jaaps grondslagbesluit van 19 oktober is overgenomen: alle vier Mailchimp-bronnen tellen mee; `subscribed` is de grondslag. Eerste echte Brevo-send is 29 oktober. Voorgesteld go/no-go 26 oktober, delta 28 oktober; writers blijven tot na 29 oktober Mailchimp.
-- Definitieve read-only dry-run voltooid: T0 `2026-10-19T17:36:35.815Z`, 2.161 kandidaten (2.090 NL, 71 EN), 464 suppressies, 24 pending, 0 quarantaine; 84 kandidaten zonder voornaam. Doellijst bestaat niet. Register en versleutelde export op `/data/consent/migration` in relaybot. [Rapport](../reports/brevo-migration-dryrun-2026-10-19.md).
-- Het concrete diff is aan Jaap ter goedkeuring voorgelegd; bij schrijven van deze handoff nog geen antwoord. Dit is een ander akkoord dan het reeds genomen grondslagbesluit. Geen import, providerwrite, supportbericht of testmail uitgevoerd. De importtool bestaat nog niet; [uitvoerbrief](briefs/brevo-baseline-import.md) ligt klaar.
-- RBL-briefing is inhoudelijk verwerkt in TODO #6 en [bewijsrapport](../reports/brevo-rbl-status-2026-10-19.md); sluit hem na merge met bewijs. Herstel is onbekend, Brevo-support aanbevolen, hertest en clicktrackingbesluit blijven apart open.
-- `npm test` 58/58, `git diff --check` en prose-wrap-check groen. Bronsets tweemaal gelezen, checksums gelijk; rapporttotalen gecontroleerd. Het script ontbrak in de Docker-image; ongewijzigd tijdelijk uitgevoerd naast `/app/src`, tijdelijke map daarna verwijderd.
-- Planningsbriefing naar ciiic-nieuwsbrief gepubliceerd: `2026-10-19--from-ciiic-automator--to-ciiic-nieuwsbrief--brevo-planning-29okt-dryrun.md`. Nog geen werkelijk lijst-ID of bevestigde delta-datum geleverd. Migratiebriefing van 19 oktober en geadopteerde opdracht van 8 oktober blijven ongeleverd; de afhankelijke importbriefing bij jaap-work blijft geblokkeerd.
+Het grondslagbesluit staat in `done/decisions.md`: alle vier Mailchimp-bronnen tellen mee. Definitieve dry-run T0 `2026-10-19T17:36:35.815Z`: 2.161 kandidaten (2.090 NL, 71 EN), 464 suppressies, 24 pending, 0 quarantaine; 84 kandidaten zonder voornaam. Doellijst bestaat niet. Register en versleutelde export staan op `/data/consent/migration` in relaybot. [Rapport](../reports/brevo-migration-dryrun-2026-10-19.md).
+
+Akkoord op het concrete diff is nog niet ontvangen. Bouw van de tool kan doorgaan; productie-import blijft geblokkeerd tot dat afzonderlijke akkoord en onafhankelijke review. Geen providerwrite, supportbericht of testmail uitgevoerd. Eerste Brevo-send 29 oktober; go/no-go 26 oktober en delta 28 oktober zijn voorstellen. Writers blijven tot na 29 oktober Mailchimp.
+
+De migratiebriefing van 19 oktober blijft open/ongeleverd, evenals de geadopteerde opdracht van 8 oktober. De afhankelijke importbriefing bij jaap-work blijft geblokkeerd. De gepubliceerde planningsbriefing naar ciiic-nieuwsbrief levert nog geen werkelijk lijst-ID of bevestigde delta-datum.
 
 ## Opdracht
 
-1. Review PR #7 tegen beide briefings van 19 oktober: controleer Jaaps besluit, de concrete dry-run en het voorgestelde vervolg. Lees zo nodig de geaggregeerde runrecord op productie; sleutel of persoonsdata hoeven niet naar git. Controleer dat er nergens importakkoord of levering wordt geclaimd.
-2. Merge na akkoord, voer housekeeping uit en sluit alleen `2026-10-19--from-jaap-work--to-ciiic-automator--brevo-rbl-logmeting-en-providerroute.md` met evidence: TODO #6 en het rapport bevatten de volledige meting, eigenaar en Brevo-supportroute; herstel/clicktracking blijven open. Geen deployacceptatie nodig voor deze documentwijziging.
-3. Behoud de migratiebriefings als open/ongeleverd. Verwerk een eventueel nieuw antwoord van Jaap op het concrete diff met datum. Zonder antwoord blijft import geblokkeerd. De volgende uitvoeropdracht is bouw van `briefs/brevo-baseline-import.md` op workhorse, met onafhankelijke flagship-review vóór een afzonderlijk geautoriseerde productie-uitvoering.
-4. Overschrijf deze handoff met de volgende sessie, behoud het onderstaande onuitgevoerde werk en neem deze overschrijfplicht weer op.
+1. Bouw één PR volgens [brevo-baseline-import.md](briefs/brevo-baseline-import.md). Claim TODO #7, lees het runbook en de bestaande preflight-, register- en read-back-code. Maak de CLI ook uitvoerbaar vanuit de productie-image; het preflight-script ontbreekt daar nu.
+2. Implementeer en test de expliciete akkoordcontrole, bron-/doeldriftcontrole, veilige lijstbinding, suppressies vóór kandidaten, hervatbaarheid, idempotentie en volledige read-back met namen. Houd ontbrekend automation- of eventlogbewijs als blokkade vast. Gebruik synthetische providerresponses; productie-uitvoering hoort niet bij deze bouwopdracht.
+3. Open een PR voor onafhankelijke flagship-review. Houd TODO #7 en beide migratiebriefings open: codelevering is nog geen baseline-import. Verwerk alleen een daadwerkelijk ontvangen diff-akkoord met datum; leid dit niet af uit de opdracht om de tool te bouwen.
+4. Overschrijf deze handoff met review-en-merge voor de nieuwe PR, behoud het onderstaande onuitgevoerde werk en neem deze overschrijfplicht weer op.
 
 ## Doorgeefblok: bestaande opdrachten behouden
 

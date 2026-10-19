@@ -24,10 +24,14 @@ Gesloten: TODO 2 (register + write-up). Recently done teruggebracht naar vijf re
 
 Gesloten: TODO 8 (register + write-up; briefing editieboekhouding-contract gesloten met bewijs, terugmeldbriefing naar ciiic-nieuwsbrief gepubliceerd). PR #5 sluit geen item: TODO 7 blijft open tot Jaaps grondslagbesluit, tekst bijgewerkt; de review-fix `429d32c` is meegeleverd. Recently done op vijf regels. Restwerk met adres: baseline-import in TODO 7, activatie in TODO 5. Radar-nacontrole en de stale `NOTION_CONTACTEN_DS_IDS`-default blijven in het doorgeefblok van de handoff, zoals bij PR #4; geen eigen item (bijvangst). Claimbord leeg, `repo-hygiene check` schoon, TODO.md 3 items / ~4,9 KB. Geen `[CONFLICT]`, geen `[DONE?]`, `briefs/` leeg. Drempel: 0 open signalen, 5 merges sinds nulpunt (#2, #3, #4, #5, #6), niet gehaald.
 
+### 2026-10-19 - PR #7 (merge `e32df11`)
+
+Documentlevering voor TODO #7 en #6; beide blijven open, dus geen gesloten TODO-adres. RBL-briefing met bewijs geleverd, migratiebriefings ongeleverd. Brief `brevo-baseline-import.md` blijft actief bij #7. Recently done op vijf regels; nieuwe lange TODO-teksten ingekort met verwijzingen naar rapport en brief. Claimbord leeg, repo-hygiene 0 artefacten, geen nieuwe signalen. Drempel: 0 open signalen, geen conflict, 6 merges sinds nulpunt; niet gehaald.
+
 ## Laatste diepe audit
 
 Nog geen. Repo aangesloten op de werkwijze op 2026-09-10 via `/workflow-init`; dat telt als nulpunt, niet als audit.
 
 ## Nudges-teller
 
-Merges sinds laatste audit: 5
+Merges sinds laatste audit: 6
