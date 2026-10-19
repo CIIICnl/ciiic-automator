@@ -7,6 +7,40 @@ import { createLanguageCodec } from './brevo-language.js';
 const digest = (value) => crypto.createHash('sha256').update(JSON.stringify(value ?? null)).digest('hex');
 const byEmail = (contacts) => new Map(contacts.map((contact) => [canonicalEmail(contact.email), contact]));
 const blocked = (contact, listId) => Boolean(contact?.emailBlacklisted || contact?.listUnsubscribed?.includes(listId));
+const sortedIds = (ids) => [...(ids ?? [])].map(Number).sort((a, b) => a - b);
+
+// List inventory and individual contact reads have different provider metadata.
+// Compare only state relevant to a candidate mutation, including every opt-out.
+function contactState(contact) {
+  if (!contact) return null;
+  return { email: canonicalEmail(contact.email), listIds: sortedIds(contact.listIds),
+    listUnsubscribed: sortedIds(contact.listUnsubscribed), emailBlacklisted: Boolean(contact.emailBlacklisted),
+    language: contact.attributes?.LANGUAGE ?? null, firstName: contact.attributes?.FIRSTNAME ?? null,
+    lastName: contact.attributes?.LASTNAME ?? null };
+}
+
+function sameContactState(a, b) { return digest(contactState(a)) === digest(contactState(b)); }
+
+function validateBatchRows(plan, key) {
+  for (const action of ['suppress', 'candidate']) {
+    const rows = plan.rows.filter((row) => row.action === action);
+    let offset = 0;
+    for (const batch of plan.batches.filter((item) => item.action === action)) {
+      if (!Number.isSafeInteger(batch.count) || batch.count < 1 ||
+        batch.checksum !== orderedBatchChecksum(rows.slice(offset, offset + batch.count), key)) {
+        throw new Error('Approved batch rows do not match checksum');
+      }
+      offset += batch.count;
+    }
+    if (offset !== rows.length) throw new Error('Approved batch rows do not match checksum');
+  }
+}
+
+function orderedBatchChecksum(rows, key) {
+  const hmac = crypto.createHmac('sha256', key);
+  for (const row of rows) hmac.update(JSON.stringify(row)).update('\n');
+  return hmac.digest('hex');
+}
 
 export function validateApproval({ run, snapshot, approval, key }) {
   if (run.t0 !== snapshot.startedAt || run.snapshotPath !== approval.snapshotPath ||
@@ -20,6 +54,7 @@ export function validateApproval({ run, snapshot, approval, key }) {
     run.counts.suppress !== snapshot.plan.counts.suppress ||
     digest(run.batches) !== digest(snapshot.plan.batches) ||
     snapshot.plan.counts.quarantine !== 0) throw new Error('Approved dry-run does not match source export');
+  validateBatchRows(snapshot.plan, key);
 }
 
 // Same order-independent HMAC used by preflight, kept here so the workflow is
@@ -38,7 +73,7 @@ export function checkSourceDrift(snapshot, current, run, key, journal) {
   for (const [email, contact] of now) {
     if (journal.records[email]?.status === 'applied' || journal.records[email]?.status === 'intent' ||
       journal.suppressions[email]?.status === 'applied' || journal.suppressions[email]?.status === 'intent') continue;
-    if (digest(contact) !== digest(initial.get(email))) throw new Error('Brevo destination drift; new dry-run and approval required');
+    if (!sameContactState(contact, initial.get(email))) throw new Error('Brevo destination drift; new dry-run and approval required');
   }
   for (const [email] of initial) {
     if (!now.has(email)) throw new Error('Brevo destination drift; new dry-run and approval required');
@@ -46,7 +81,7 @@ export function checkSourceDrift(snapshot, current, run, key, journal) {
 }
 
 export function rowMatches(row, contact, listId) {
-  return Boolean(contact?.listIds?.includes(listId) && !blocked(contact, listId) &&
+  return Boolean(contact?.listIds?.includes(listId) && !blocked(contact, listId) && !contact?.listUnsubscribed?.length &&
     Number(contact?.attributes?.LANGUAGE) === Number(row.attributes.LANGUAGE) &&
     (!row.firstName || contact?.attributes?.FIRSTNAME === row.firstName) &&
     (!row.lastName || contact?.attributes?.LASTNAME === row.lastName));
@@ -92,6 +127,7 @@ export async function executeBaseline({ snapshot, run, approval, key, journal, p
     }
   }
   if (run.targetList.exists && target.id !== run.targetList.id) throw new Error('Target list drift');
+  if (journal.listId && (!target.exists || target.id !== journal.listId)) throw new Error('Journal target list drift');
   if (!run.targetList.exists && target.exists && journal.listId !== target.id) throw new Error('Unapproved target list appeared');
   let listId = journal.listId || target.id;
   if (listId && [2, 3].includes(listId)) throw new Error('Test list selected');
@@ -159,7 +195,10 @@ export async function executeBaseline({ snapshot, run, approval, key, journal, p
           await save(journal);
           continue;
         }
-        if (digest(current) !== digest(prior.get(row.email))) throw new Error('Uncertain provider outcome; manual reconciliation required');
+        if (!sameContactState(current, prior.get(row.email))) throw new Error('Uncertain provider outcome; manual reconciliation required');
+      }
+      if (!existing && !sameContactState(current, prior.get(row.email))) {
+        throw new Error('Brevo contact changed after inventory; new dry-run and approval required');
       }
       const payload = safeCandidatePayload(row, current, listId);
       journal.records[row.email] = { status: 'intent', checksum: rowDigest(row), batchId: batch.order,
