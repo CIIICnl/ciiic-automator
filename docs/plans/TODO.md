@@ -4,7 +4,7 @@ Leeswijzer in het kort (volledig: skill `werkwijze`): _In progress_ is een claim
 
 ## In progress
 
-_(leeg)_
+- #7 Brevo-baseline-importtool, op branch `feat/brevo-baseline-import` (mbp); productie-import blijft wachten op apart diff-akkoord en onafhankelijke review.
 
 ## Open werk
 

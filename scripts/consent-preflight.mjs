@@ -57,7 +57,7 @@ function brevoKey() {
   return key;
 }
 
-async function brevoContacts() {
+export async function brevoContacts() {
   return readPages((offset, limit) =>
     `https://api.brevo.com/v3/contacts?limit=${limit}&offset=${offset}`,
   { 'api-key': brevoKey() }, 'contacts', 1000);
@@ -78,14 +78,14 @@ export function resolveTargetList(lists, configuredId) {
     : { name: TARGET_LIST_NAME, exists: false, id: null };
 }
 
-async function brevoLists() {
+export async function brevoLists() {
   return readPages((offset, limit) =>
     `https://api.brevo.com/v3/contacts/lists?limit=${limit}&offset=${offset}`,
   { 'api-key': brevoKey() }, 'lists', 50);
 }
 
 // The LANGUAGE category values are read live and validated, never assumed.
-async function brevoLanguageEnumeration() {
+export async function brevoLanguageEnumeration() {
   const data = await getJson('https://api.brevo.com/v3/contacts/attributes', { 'api-key': brevoKey() });
   languageCodecFromAttributes(data);
   return data.attributes.find((attribute) => attribute.name === BREVO_LANGUAGE_ATTRIBUTE).enumeration;

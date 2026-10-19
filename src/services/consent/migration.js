@@ -222,7 +222,7 @@ export function compareBaselineReadback({ plan, contacts, registryByEmail, targe
   const expected = new Map(plan.rows.filter((row) => row.action === 'candidate').map((row) => [row.email, row]));
   const suppressed = new Set(plan.rows.filter((row) => row.action === 'suppress').map((row) => row.email));
   const actual = new Map(contacts.map((contact) => [canonicalEmail(contact.email), contact]));
-  const issues = { missingMembership: 0, extraMembership: 0, languageMismatch: 0,
+  const issues = { missingMembership: 0, extraMembership: 0, languageMismatch: 0, firstNameMismatch: 0, lastNameMismatch: 0,
     missingSuppression: 0, duplicateProviderIdentity: 0, unexpectedSuppression: 0,
     lostExistingBlock: 0 };
   const seen = new Set();
@@ -237,6 +237,8 @@ export function compareBaselineReadback({ plan, contacts, registryByEmail, targe
     const contact = actual.get(email);
     if (!contact?.listIds?.includes(Number(targetBrevoListId))) issues.missingMembership += 1;
     if (languageOf(contact) !== row.language) issues.languageMismatch += 1;
+    if (row.firstName && contact?.attributes?.FIRSTNAME !== row.firstName) issues.firstNameMismatch += 1;
+    if (row.lastName && contact?.attributes?.LASTNAME !== row.lastName) issues.lastNameMismatch += 1;
     if (contact?.emailBlacklisted || contact?.listUnsubscribed?.includes(Number(targetBrevoListId))) {
       issues.unexpectedSuppression += 1;
     }
