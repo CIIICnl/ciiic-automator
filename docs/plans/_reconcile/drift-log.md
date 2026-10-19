@@ -28,10 +28,14 @@ Gesloten: TODO 8 (register + write-up; briefing editieboekhouding-contract geslo
 
 Documentlevering voor TODO #7 en #6; beide blijven open, dus geen gesloten TODO-adres. RBL-briefing met bewijs geleverd, migratiebriefings ongeleverd. Brief `brevo-baseline-import.md` blijft actief bij #7. Recently done op vijf regels; nieuwe lange TODO-teksten ingekort met verwijzingen naar rapport en brief. Claimbord leeg, repo-hygiene 0 artefacten, geen nieuwe signalen. Drempel: 0 open signalen, geen conflict, 6 merges sinds nulpunt; niet gehaald.
 
+### 2026-10-19 - PR #8 (merge `ce23937`)
+
+Codegedeelte van TODO #7 geleverd; item blijft open voor diff-akkoord en productie-import. Claimbord leeg, uitvoerbrief bewust actief, write-up in `done/2026-10.md`; geen gesloten TODO-adres. Recently done vijf regels. Repo-hygiene schoon (0 artefacten), geen nieuwe signalen. Drempel: 0 open signalen, geen conflict, 7 merges sinds nulpunt; niet gehaald.
+
 ## Laatste diepe audit
 
 Nog geen. Repo aangesloten op de werkwijze op 2026-09-10 via `/workflow-init`; dat telt als nulpunt, niet als audit.
 
 ## Nudges-teller
 
-Merges sinds laatste audit: 6
+Merges sinds laatste audit: 7

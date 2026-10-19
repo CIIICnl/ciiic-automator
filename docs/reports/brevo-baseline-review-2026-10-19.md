@@ -19,7 +19,7 @@ De importtool is gereviewd tegen `docs/plans/briefs/brevo-baseline-import.md`. D
 | Volledige read-back | Hele inventaris vergeleken op lidmaatschap, taal, namen en suppressies; maximaal tien kandidaten apart teruggelezen. Productiesteekproef van tien volgt pas bij import. |
 | Geen importmail | Geen verzendendpoint in adapter; SMTP- en marketingeventlogs zijn expliciet ontbrekend bewijs en blokkeren vrijgave. Geen echte import of testmail in deze review. |
 
-`npm test`: 70/70 geslaagd op de gereviewde code. `git diff --check`: schoon. Tests gebruiken synthetische contacten. De CLI vangt fouten af met vaste tekst zonder adressen, credentials of providerbody. De versleutelde export en het hervatregister blijven buiten git.
+PR #8 gemerged als `ce23937`. `npm test`: 70/70 geslaagd op de gereviewde code; CI Node 20/22 groen. Docker-build geslaagd; importer en provideradapter laden in de productie-image zonder netwerk. Aanroep zonder bewijsbestanden stopt veilig. `git diff --check`: schoon. Tests gebruiken synthetische contacten. De CLI vangt fouten af met vaste tekst zonder adressen, credentials of providerbody. De versleutelde export en het hervatregister blijven buiten git.
 
 Providercontract gecontroleerd tegen de [officiële Brevo-update-API](https://developers.brevo.com/reference/update-contact): `listIds` voegt lidmaatschappen toe, `unlinkListIds` verwijdert ze. Bestaande contacten krijgen geen nieuw e-mailadres of blacklistwaarde mee. De [detail-API](https://developers.brevo.com/reference/get-contact-info) kan extra metadata bevatten; daarom vergelijkt de hervatlogica de relevante contactvelden.
 

@@ -2,6 +2,10 @@
 
 Tier: `flagship-review` (migratie van opgeslagen persoonsgegevens). Uitvoer: workhorse; onafhankelijke review en merge: flagship. Bouwvoorbereiding is toegestaan; een providerimport vraagt eerst Jaaps akkoord op het definitieve diff en een gereviewde importtool.
 
+## Stand na codereview 19 oktober
+
+PR #8 (`ce23937`) levert de gereviewde tool; [reviewbewijs](../../reports/brevo-baseline-review-2026-10-19.md). Deze brief blijft actief voor productie-uitvoering en de nog open acceptatiecriteria. Onderstaande aanleiding beschrijft de bouwopdracht.
+
 ## Wat is er aan de hand
 
 De dry-run bestaat, maar de importtool nog niet. Zonder hervatbare import, suppressieboekhouding en read-back kan ciiic-nieuwsbrief de nieuwe hoofdlijst niet veilig gebruiken. Het grondslagbesluit van 19 oktober accepteert alle vier Mailchimp-bronnen; het is geen akkoord op een concreet import-diff. Zie `done/decisions.md`, TODO #7 en `docs/reports/brevo-migration-dryrun-2026-10-19.md`.

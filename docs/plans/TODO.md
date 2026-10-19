@@ -4,15 +4,15 @@ Leeswijzer in het kort (volledig: skill `werkwijze`): _In progress_ is een claim
 
 ## In progress
 
-- #7 Brevo-baseline-importtool, op branch `feat/brevo-baseline-import` (mbp); productie-import blijft wachten op apart diff-akkoord en onafhankelijke review.
+_(geen)_
 
 ## Open werk
 
-### 7. Brevo-baseline wacht op diff-akkoord en importtool
+### 7. Brevo-baseline wacht op diff-akkoord en productie-import
 
 **[flagship-review] [beslissing Jaap]** Grondslagbesluit 19 oktober vastgelegd; dry-run T0 `2026-10-19T17:36:35.815Z`: 2.161 kandidaten (2.090 NL, 71 EN), 464 suppressies, 24 pending, 0 quarantaine. Doellijst ontbreekt. [Diff en bewijs](../reports/brevo-migration-dryrun-2026-10-19.md); [uitvoerbrief](briefs/brevo-baseline-import.md) bevat bronopdrachten en alle acceptatiecriteria.
 
-Goed gedaan: hervatbare importtool bouwen; na onafhankelijke review en Jaaps diff-akkoord importeren. Eerste send 29 oktober; voorstel go/no-go 26 oktober, delta 28 oktober. Writers blijven tot na 29 oktober Mailchimp.
+Importtool gereviewd en gemerged in PR #8 (`ce23937`). Goed gedaan: na Jaaps diff-akkoord en uitvoeringsmandaat importeren en volledig teruglezen. Eerste send 29 oktober; voorstel go/no-go 26 oktober, delta 28 oktober. Writers blijven tot na 29 oktober Mailchimp.
 
 Klaar als: diff-akkoord, volledige read-back met taal/namen/suppressies, idempotentie, steekproef tien en geen importmail bewezen; lijst-ID en bevestigde delta-datum gepubliceerd; migratiebriefings van 8 en 19 oktober met bewijs geleverd.
 
@@ -32,8 +32,8 @@ Klaar als: providerroute en clicktrackingbesluit in `done/decisions.md`, geautor
 
 ## Recently done
 
+- 2026-10-19, PR #8 (`ce23937`): importtool onafhankelijk gereviewd, drie guards hersteld; 70 tests groen. Codegereed, TODO #7 blijft open voor akkoord en productie-import.
 - 2026-10-19, PR #7 (`e32df11`): Brevo-grondslagbesluit, definitieve dry-run en RBL-logmeting gereviewd; RBL-briefing geleverd. TODO #7/#6 blijven open; importtool gebrieft.
 - 2026-10-15 — suppressieboekhouding editiecontract: `byLanguage`-tellers, `removedByAutomator`, suppressies overleven een snapshotverversing; afspraak in runbook § Editiecontract punt 5. Briefing beantwoord en gesloten.
 - 2026-10-11, PR #6 — #8 editiecontract met ciiic-nieuwsbrief: snapshot-endpoint, Brevo-receipts, suppressieroute (b), `GET`-stand; inert tot activatie (#5). Terugmeldbriefing gepubliceerd, briefing gesloten (merge `fe9f3ea`). Write-up `done/2026-10.md`.
 - 2026-10-11, PR #5 — dry-run-tooling voor de Brevo-migratie (diff, grondslag per bron, doellijst, T0-register); het item zelf (#7) blijft open tot Jaaps grondslagbesluit (merge `84c30e7`).
-- 2026-10-08, PR #4 — #2 Radar-bronnen beslist: Springer en Nature aan in Coolify-env, EurekAlert/Immersive Wire/UploadVR uit de code (merge `d098761`, zie `done/decisions.md`).

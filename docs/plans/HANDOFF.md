@@ -1,21 +1,26 @@
-# Review-en-merge: Brevo-baseline-importtool (PR #8)
+# Beslis- en uitvoersessie: Brevo-baseline na diff-akkoord
 
-Rol: stuur. Tier: `flagship-review`; onafhankelijke flagship-review en merge.
+Rol: stuur. Tier: `flagship-review` (migratie); eerst Jaaps concrete akkoord en uitvoeringsmandaat, daarna uitvoering met onafhankelijke bewijscontrole.
 
 ## Stand bij vertrek
 
-19 oktober 2026, PR [#8](https://github.com/CIIICnl/ciiic-automator/pull/8) op branch `feat/brevo-baseline-import`, commit `3b13346`, wacht op onafhankelijke review. De uitvoersessie bouwde de expliciete `--apply`-CLI, versleuteld hervatregister, lijstbinding, suppressies vóór kandidaten, volledige read-back inclusief namen en steekproef van tien. `npm test` (63 tests), Docker-build, diff-check en GitHub CI op Node 20/22 groen. De importtool en preflight zitten in de image. Geen providerwrites uitgevoerd.
+PR [#8](https://github.com/CIIICnl/ciiic-automator/pull/8) is op 19 oktober onafhankelijk gereviewd en gemerged (`ce23937`). Reviewfix `9085dc4` beschermt de actuele lijstbinding, contactwijzigingen tijdens de import en de HMAC van daadwerkelijke batchregels. 70 tests en CI Node 20/22 groen; Docker-build en module-smoke zonder netwerk geslaagd. [Reviewrapport](../reports/brevo-baseline-review-2026-10-19.md). Vóór merge live gecontroleerd: consent-/providerflags ongezet, Form43/feed7 actief op het oude Mailchimp-pad.
 
-TODO #7 blijft open. Jaaps akkoord op het concrete diff is nog niet ontvangen; de definitieve dry-run blijft T0 `2026-10-19T17:36:35.815Z` met 2.161 kandidaten, 464 suppressies, 24 pending en 0 quarantaine. Register en export staan op `/data/consent/migration`. De tool vereist een gedateerd akkoordbestand en actueel automation-attest op dat volume. SMTP- en marketingeventlogs over het volledige importvenster zijn bewust nog niet bewezen; de tool geeft geen cutover-vrijgave. Writers blijven tot na 29 oktober Mailchimp.
+TODO #7 is codegereed maar de productie-import is niet uitgevoerd. Jaaps akkoord op het concrete diff ontbreekt: T0 `2026-10-19T17:36:35.815Z`, 2.161 kandidaten (2.090 NL, 71 EN), 464 suppressies, 24 pending, nul quarantaine. Register en export staan op `/data/consent/migration`. De tool vereist een gedateerd akkoordbestand en actueel automation-attest op dat volume. SMTP- en marketingeventlogs over het volledige importvenster zijn nog niet bewezen; de tool geeft geen cutover-vrijgave. Writers blijven tot na 29 oktober Mailchimp.
 
-De migratiebriefing van 19 oktober en de geadopteerde opdracht van 8 oktober blijven ongeleverd. De afhankelijke importbriefing bij jaap-work blijft geblokkeerd. De planningsbriefing naar ciiic-nieuwsbrief bevat nog geen werkelijk lijst-ID of bevestigde delta-datum.
+Beide migratiebriefings van 8 en 19 oktober blijven ongeleverd; de afhankelijke importbriefing bij jaap-work blijft geblokkeerd. De planningsbriefing naar ciiic-nieuwsbrief bevat nog geen werkelijk lijst-ID of bevestigde delta-datum.
+
+## Terugkeer-check
+
+Jaap: akkoord op [dit concrete diff](../reports/brevo-migration-dryrun-2026-10-19.md) en uitvoering van de baseline na alle controles? Advies: dit diff goedkeuren; de importer stopt bij bronwijzigingen en vraagt dan een nieuw diff-akkoord. Go/no-go 26 oktober en delta 28 oktober zijn voorstellen; eerste send 29 oktober staat vast. Geen akkoord afleiden uit `/handoff` of de grondslagbeslissing.
 
 ## Opdracht
 
-1. Review [PR #8](https://github.com/CIIICnl/ciiic-automator/pull/8) onafhankelijk tegen [de uitvoerbrief](briefs/brevo-baseline-import.md): akkoord- en driftpoorten, lijstbinding, suppressies, onderbroken providerantwoord, idempotentie, taal en namen, volledige read-back en geen PII in uitvoer. Controleer ook dat de CLI in de image draait. Draai tests of controleer groene CI; corrigeer bevindingen en merge pas na voldane criteria. Verifieer vóór merge live dat `CIIIC_CONSENT_ROUTE` niet `enabled` is en Form43/feed7 nog op het oude Mailchimp-pad zit.
-2. Na merge: voer `merge-housekeeping` uit en werk TODO #7 bij als codegereed maar nog wachtend op Jaaps diff-akkoord en productie-uitvoering. Sluit de migratiebriefings niet op basis van de code. Geen import, supportbericht of testmail zonder hun eigen mandaat.
-3. Bepaal de volgende uitvoeropdracht op basis van de feitelijke stand: eerst het concrete diff-akkoord registreren, dan onder apart uitvoeringsmandaat de baseline met automationbewijs en volledige eventlogcontrole uitvoeren. Publiceer pas daarna het werkelijke lijst-ID en de bevestigde delta-datum naar ciiic-nieuwsbrief.
-4. Overschrijf deze handoff met de volgende opdracht, behoud onderstaand onuitgevoerd werk en neem deze overschrijfplicht weer op als laatste genummerde stap.
+1. Controleer of Jaaps diff-akkoord en uitvoeringsmandaat inmiddels expliciet zijn gegeven. Ontbreken ze, leg het concrete diff voor en wacht met providerwrites. Bij akkoord: leg datum en scope vast in `done/decisions.md` en het afgeschermde attest op het volume.
+2. Controleer de live bron-/doelstand, map-ID, unieke doellijst en actuele account-/lijstautomations volgens [uitvoerbrief](briefs/brevo-baseline-import.md) en [runbook](../reference/ciiic-consent-preparation.md). Bronwijziging vraagt een nieuwe dry-run en nieuw akkoord. Bewijs de benodigde reconciliation/delta-opslag sinds T0; oude proefregisters voldoen niet. Controleer vooraf de toegang tot SMTP- én marketingeventlogs over het volledige importvenster.
+3. Alleen binnen het expliciete mandaat: voer de baseline uit, bewijs volledige read-back, idempotentie, tien individuele controles en geen importmail. Onzekere provideruitkomst of gedeeltelijke batch blijft geblokkeerd; verwijder een achtergebleven lock pas na procescontrole. Geen consent-routeactivatie, writer-cutover, supportbericht of testmail.
+4. Na volledige levering: bevestig met Jaap de delta-datum, publiceer werkelijk lijst-ID en datum naar ciiic-nieuwsbrief; sluit beide migratiebriefings alleen met bewijs op al hun criteria. Werk TODO #7 en de planning bij. Bewaar het onderstaande onuitgevoerde werk.
+5. Overschrijf deze handoff met feitelijke stand en vervolgopdracht; behoud onuitgevoerd werk en neem deze overschrijfplicht weer op als laatste genummerde stap.
 
 ## Doorgeefblok: bestaande opdrachten behouden
 
