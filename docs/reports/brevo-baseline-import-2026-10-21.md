@@ -33,7 +33,7 @@ Idempotentie: een tweede `--apply` met hetzelfde goedgekeurde plan strandde eers
 ## Wat er onderweg misging en wat ervan geleerd is
 
 1. **Mailchimp-timeouts.** Pagina's van 1.000 volledige leden halen de 60s-timeout van `getJson` regelmatig niet; drie dry-runs en één `--apply` strandden erop vóór enige write. Tijdelijk is de timeout in de containerkopie van `scripts/consent-preflight.mjs` op 180s gezet (na afloop teruggezet). Structurele fix in deze PR: 180s plus twee herhalingen op `TimeoutError` voor read-only GETs.
-2. **Brevo 429.** De idempotentierun leest elk contact afzonderlijk terug; twee volledige runs kort na elkaar triggeren de rate limit. Pauze tussen runs volstaat; een backoff in de provider is een verbeterpunt (TODO).
+2. **Brevo 429.** De idempotentierun leest elk contact afzonderlijk terug; twee volledige runs kort na elkaar triggeren de rate limit. Deze PR voegt backoff op 429 en timeouts toe voor GETs in `baseline-provider.js` (writes worden nooit blind herhaald).
 3. **Brevo maakt zelf lijsten.** Tijdens de dag verscheen lijst 19 "Contacts involved in conversations" (map 18) met één contact, aangemaakt door Brevo Conversations. Dat is bestemmingsdrift voor de tool; de ketting ving het op met een nieuwe dry-run.
 4. **Foutmeldingen.** De productie-CLI's drukken bewust geen oorzaak af; voor diagnose is een kopie met leesbare `error.message` nodig. Overweeg een allowlist van veilige meldingen zoals de preflight al heeft (TODO).
 
@@ -45,4 +45,4 @@ Idempotentie: een tweede `--apply` met hetzelfde goedgekeurde plan strandde eers
 
 ## Idempotentie
 
-_(wordt ingevuld na de herhaalde run)_
+_(wordt ingevuld na de herhaalde run met de uitgerolde backoff)_

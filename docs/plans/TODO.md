@@ -16,9 +16,9 @@ Goed gedaan: een delta-run leest Mailchimp sinds T0 (nieuwe subscribed, nieuwe u
 
 Klaar als: delta-tooling gereviewd, go/no-go-check 26 oktober gedocumenteerd, delta 28 oktober uitgevoerd en teruggelezen met eventlogbewijs, nieuw T0 in het register, terugmelding naar ciiic-nieuwsbrief.
 
-### 10. Importtool: backoff op Brevo 429 en leesbare foutmeldingen
+### 10. Import-CLI's drukken geen oorzaak af
 
-**[workhorse]** De idempotentierun van 21 oktober strandde op een Brevo 429 bij het per-contact teruglezen; de CLI's drukken bovendien geen oorzaak af, zodat diagnose een aangepaste kopie vergt. Goed gedaan: retry met backoff op 429 en `TimeoutError` in `baseline-provider.js`, en een allowlist van veilige foutmeldingen in `consent-baseline-import.mjs` zoals de preflight die al heeft. Klaar als: tests voor backoff en allowlist, geen adressen of bodies in stderr.
+**[workhorse]** Bij een fout melden `consent-baseline-import.mjs` en `consent-reconcile.mjs` alleen "inspect protected register"; op 21 oktober was voor elke diagnose een aangepaste kopie nodig. Goed gedaan: een allowlist van veilige meldingen (timeout, 429, drift, attest, lock) zoals `consent-preflight.mjs` die al heeft; nooit bodies, paden met adressen of credentials. Klaar als: allowlist met test, stderr blijft adresvrij. (Backoff op Brevo 429/timeout voor GETs zit sinds PR #9 in `baseline-provider.js`.)
 
 ### 5. Brevo-productiegebruik mist nog geverifieerd bevestigingsbewijs en consumerkoppelingen
 
