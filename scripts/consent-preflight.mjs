@@ -12,7 +12,7 @@ const MAILCHIMP_STATUSES = ['subscribed', 'unsubscribed', 'cleaned', 'pending', 
 export const TARGET_LIST_NAME = 'CIIIC nieuwsbrief';
 
 // Mailchimp pages of 1000 full member records regularly take over a minute;
-// a timeout here is latency, not drift, so one retry is safe for a GET.
+// a timeout here is latency, not drift, so two retries are safe for a GET.
 async function getJson(url, headers, attempt = 1) {
   try {
     const response = await fetch(url, { method: 'GET', headers, signal: AbortSignal.timeout(180000) });
