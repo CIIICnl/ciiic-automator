@@ -138,6 +138,37 @@ Volg bij uitvoering deze volgorde:
 4. Bewaar alle wijzigingen sinds T0, inclusief later ontvangen gebeurtenissen met een oude brondatum. Verwerk vóór cutover de finale delta en controleer de volledige bron-/doelset opnieuw.
 5. Bij rollback blijven alle nieuwe suppressies en voorkeuren gelden. Herstel nooit blind een oude export. Een gedeeltelijk verzonden editie vraagt eerst provideroverschrijdende send-reconciliation en een afzonderlijk besluit over resterende ontvangers.
 
+### Delta na de baseline
+
+`scripts/consent-delta-import.mjs` brengt lijst 20 bij met wat er in Mailchimp veranderde sinds de laatste toegepaste run (de baseline van 21 oktober, of een eerdere delta). Writers blijven tot na de eerste Brevo-send Mailchimp, dus vóór elke send is een delta nodig. Brief: `../plans/briefs/brevo-delta-import.md` (bij uitvoering in `../plans/done/`).
+
+**Wat de delta doet.** De tool leest de versleutelde bronexport en het register van de basisrun, eist dat die run volledig `applied` is met een geverifieerde read-back, en bouwt daaruit de effectieve stand van lijst 20. Daarna leest hij Mailchimp en Brevo twee keer (stabiliteitscheck) en berekent per adres:
+
+- **suppress**: afgemeld, cleaned, weer pending, gearchiveerd of uit Mailchimp verdwenen, ook als de baseline het adres importeerde. Een nieuw afgemeld adres dat nooit lid was, komt alleen in het register. Uitvoering is `unlinkListIds` op lijst 20; een bestaande blokkade wordt nooit gereset.
+- **update**: lid in de basis met gewijzigde taal of naam. Een in Mailchimp geleegde naam wist Brevo niet; de oude naam blijft en telt mee onder `ignored.nameCleared`.
+- **add**: nieuw subscribed sinds de basis (ook pending naar subscribed), met dezelfde grondslag als de baseline (`consentPolicy` uit het basisrecord), `updateEnabled: false`.
+- **hold** (geen write, alleen een teller): herinschrijving van een eerder gesupprimeerd adres (`resubscribed_after_suppression`; opheffen vraagt expliciet beleid), en wat de baseline ook in quarantaine zou zetten (dubbele identiteit, beide taalgroepen, onbewezen grondslag, Brevo-taalconflict of lijstopt-out elders).
+
+Het run-record bevat ook `destination`: de volledige vergelijking van lijst 20 met de effectieve basisstand. Is die niet `verified`, dan weigert `apply` en is de go/no-go rood.
+
+**Volgorde op de dag zelf.** Zelfde poorten als de baseline: akkoord gebonden aan `runSha256` van het delta-record én aan `baselineT0`, een actueel automation-attest (na het akkoord), providerflags ongezet, lijstnaam én ID, testlijsten 2/3 geweigerd, bron ongewijzigd tussen dry-run en `--apply`. Draai dry-run, akkoord en `--apply` dus direct achter elkaar; een churn-marge geldt alleen als Jaap die voor deze delta opnieuw geeft.
+
+```sh
+node scripts/consent-delta-import.mjs go-no-go --base-run /data/consent/migration/<T0>-dryrun.json --automation-evidence /data/consent/migration/<T>-automations.json [--max-age-days 3] [--rbl resolved]
+node scripts/consent-delta-import.mjs dry-run --base-run /data/consent/migration/<T0>-dryrun.json
+node scripts/consent-delta-import.mjs apply --run /data/consent/migration/<T1>-delta-dryrun.json --approval /data/consent/migration/<T1>-delta-approval.json --automation-evidence /data/consent/migration/<T1>-automations.json
+node scripts/consent-delta-import.mjs apply --run … --approval … --automation-evidence … --apply
+node scripts/consent-delta-import.mjs event-log --run /data/consent/migration/<T1>-delta-dryrun.json
+```
+
+- `go-no-go` is read-only en schrijft niets: huidig delta-diff, lijststand, blokkades (bestemming wijkt af, attest ouder dan `--max-age-days`, providerflags) en waarschuwingen (holds, geleegde namen, TODO #6 zolang `--rbl resolved` ontbreekt). De uitkomst gaat in `docs/reports/brevo-go-no-go-<datum>.md`.
+- `dry-run` schrijft `<T1>-delta-dryrun.json` (geen adressen) en `<T1>-delta-snapshot.enc.json` naast de basisbestanden. Het akkoord `<T1>-delta-approval.json` bevat `t0` (= T1), `baselineT0`, `snapshotPath`, `runSha256`, `approvedBy: "Jaap"`, `approvedAt`.
+- `apply --apply` legt eerst alle suppressies vast, dan updates, dan adds, met per adres intentie en uitkomst in `<T1>-delta-register.enc.json`. Een herstart leest elk contact terug voordat hij iets opnieuw overweegt; een tweede identieke run geeft `writes: 0`. Na afloop volgt een volledige read-back van lijst 20 tegen de nieuwe effectieve stand plus tien losse controles uit de delta.
+- `event-log` leest na de apply het SMTP-eventlog volledig gepagineerd en alle marketingcampagnes over het venster vanaf T1, en telt alleen aggregaten: events in het venster, events op adressen uit de delta, verzonden of actieve campagnes. Uitkomst in het register (`eventLog`, `eventLogVerified`). Andere systemen op hetzelfde account (zoals de IX Labs-registratiemails) tellen mee in `inWindow` maar niet in `deltaAddressesInWindow`; beoordeel ze, maar ze blokkeren niet.
+- Een toegepaste delta is de basis voor de volgende: `--base-run <T1>-delta-dryrun.json`. Daarna gaat het nieuwe T1 via een briefing naar ciiic-nieuwsbrief.
+
+Fouten op stderr komen uit een vaste lijst meldingen (geen bodies, paden of adressen); al het andere heet `unlisted failure`.
+
 ## Editiecontract met nieuwsbrief
 
 `src/services/consent/editions.js` is het grootboek: één taaltoewijzing per editie, sleutel editie + genormaliseerde contactidentiteit, onafhankelijk van taal of provider. Vóór de eerste providerpoging mag de snapshot vernieuwen; daarna is hij bevroren en geldt een taalwijziging pas voor de volgende editie.

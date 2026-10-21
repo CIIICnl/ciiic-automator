@@ -19,7 +19,7 @@ function contactState(contact) {
     lastName: contact.attributes?.LASTNAME ?? null };
 }
 
-function sameContactState(a, b) { return digest(contactState(a)) === digest(contactState(b)); }
+export function sameContactState(a, b) { return digest(contactState(a)) === digest(contactState(b)); }
 
 function validateBatchRows(plan, key) {
   for (const action of ['suppress', 'candidate']) {
@@ -36,7 +36,7 @@ function validateBatchRows(plan, key) {
   }
 }
 
-function orderedBatchChecksum(rows, key) {
+export function orderedBatchChecksum(rows, key) {
   const hmac = crypto.createHmac('sha256', key);
   for (const row of rows) hmac.update(JSON.stringify(row)).update('\n');
   return hmac.digest('hex');
@@ -97,20 +97,29 @@ export function safeCandidatePayload(row, current, listId) {
 
 function rowDigest(row) { return digest(row); }
 
-export async function executeBaseline({ snapshot, run, approval, key, journal, provider, save, apply = false,
-  automationEvidence, now = () => new Date().toISOString() }) {
-  validateApproval({ run, snapshot, approval, key });
+// Shared with the delta import: the attest must postdate the approval it serves.
+export function assertAutomationEvidence(automationEvidence, approvedAt) {
   if (!automationEvidence?.checkedBy || !automationEvidence?.checkedAt ||
     automationEvidence?.listName !== 'CIIIC nieuwsbrief' ||
     automationEvidence?.confirmationDisabled !== true || automationEvidence?.welcomeDisabled !== true ||
     automationEvidence?.marketingDisabled !== true || automationEvidence?.scope !== 'account-and-list' ||
     !Number.isFinite(Date.parse(automationEvidence.checkedAt)) ||
-    Date.parse(automationEvidence.checkedAt) < Date.parse(approval.approvedAt)) {
+    Date.parse(automationEvidence.checkedAt) < Date.parse(approvedAt)) {
     throw new Error('Current account and list automation evidence required');
   }
+}
+
+export function assertProviderFlagsUnset() {
   if (process.env.CIIIC_MARKETING_PROVIDER === 'brevo' || process.env.CIIIC_CONSENT_ROUTE === 'enabled') {
     throw new Error('Provider or writer route already switched');
   }
+}
+
+export async function executeBaseline({ snapshot, run, approval, key, journal, provider, save, apply = false,
+  automationEvidence, now = () => new Date().toISOString() }) {
+  validateApproval({ run, snapshot, approval, key });
+  assertAutomationEvidence(automationEvidence, approval.approvedAt);
+  assertProviderFlagsUnset();
   if (journal.t0 && journal.t0 !== run.t0) throw new Error('Journal belongs to another dry-run');
   journal.t0 = run.t0;
   journal.records ||= {};
