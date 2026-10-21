@@ -11,10 +11,17 @@ import { BREVO_LANGUAGE_ATTRIBUTE, languageCodecFromAttributes } from '../src/se
 const MAILCHIMP_STATUSES = ['subscribed', 'unsubscribed', 'cleaned', 'pending', 'archived', 'transactional'];
 export const TARGET_LIST_NAME = 'CIIIC nieuwsbrief';
 
-async function getJson(url, headers) {
-  const response = await fetch(url, { method: 'GET', headers, signal: AbortSignal.timeout(60000) });
-  if (!response.ok) throw new Error(`Read-only provider request failed: HTTP ${response.status}`);
-  return response.json();
+// Mailchimp pages of 1000 full member records regularly take over a minute;
+// a timeout here is latency, not drift, so two retries are safe for a GET.
+async function getJson(url, headers, attempt = 1) {
+  try {
+    const response = await fetch(url, { method: 'GET', headers, signal: AbortSignal.timeout(180000) });
+    if (!response.ok) throw new Error(`Read-only provider request failed: HTTP ${response.status}`);
+    return response.json();
+  } catch (error) {
+    if (error.name === 'TimeoutError' && attempt < 3) return getJson(url, headers, attempt + 1);
+    throw error;
+  }
 }
 
 async function readPages(makeUrl, headers, itemsKey, limit) {
