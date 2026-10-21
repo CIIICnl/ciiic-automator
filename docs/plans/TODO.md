@@ -8,13 +8,17 @@ _(geen)_
 
 ## Open werk
 
-### 7. Brevo-baseline wacht op diff-akkoord en productie-import
+### 9. Brevo-delta op 28 oktober en go/no-go op 26 oktober
 
-**[flagship-review] [beslissing Jaap]** Grondslagbesluit 19 oktober vastgelegd; dry-run T0 `2026-10-19T17:36:35.815Z`: 2.161 kandidaten (2.090 NL, 71 EN), 464 suppressies, 24 pending, 0 quarantaine. Doellijst ontbreekt. [Diff en bewijs](../reports/brevo-migration-dryrun-2026-10-19.md); [uitvoerbrief](briefs/brevo-baseline-import.md) bevat bronopdrachten en alle acceptatiecriteria.
+**[flagship-review] [beslissing Jaap]** Baseline staat (21 oktober, lijst 20, 2.163 leden, 464 suppressies; [bewijs](../reports/brevo-baseline-import-2026-10-21.md)). Sindsdien schrijven Form43/feed7 en de automator nog op Mailchimp; alles wat na T0 `2026-10-21T11:01:06.771Z` binnenkomt of afmeldt moet vóór de send op 29 oktober naar lijst 20, met suppressies voorop. Jaap bevestigde delta woensdag 28 oktober en go/no-go maandag 26 oktober.
 
-Importtool gereviewd en gemerged in PR #8 (`ce23937`). Goed gedaan: na Jaaps diff-akkoord en uitvoeringsmandaat importeren en volledig teruglezen. Eerste send 29 oktober; voorstel go/no-go 26 oktober, delta 28 oktober. Writers blijven tot na 29 oktober Mailchimp.
+Goed gedaan: een delta-run leest Mailchimp sinds T0 (nieuwe subscribed, nieuwe unsubscribed/cleaned, gewijzigde taal of naam), past alleen die mutaties toe via dezelfde registerlogica (suppressies eerst, read-back, geen mail) en legt een nieuw T0 vast. Buiten mandaat: writer-cutover, consent-route, verzending.
 
-Klaar als: diff-akkoord, volledige read-back met taal/namen/suppressies, idempotentie, steekproef tien en geen importmail bewezen; lijst-ID en bevestigde delta-datum gepubliceerd; migratiebriefings van 8 en 19 oktober met bewijs geleverd.
+Klaar als: delta-tooling gereviewd, go/no-go-check 26 oktober gedocumenteerd, delta 28 oktober uitgevoerd en teruggelezen met eventlogbewijs, nieuw T0 in het register, terugmelding naar ciiic-nieuwsbrief.
+
+### 10. Importtool: backoff op Brevo 429 en leesbare foutmeldingen
+
+**[workhorse]** De idempotentierun van 21 oktober strandde op een Brevo 429 bij het per-contact teruglezen; de CLI's drukken bovendien geen oorzaak af, zodat diagnose een aangepaste kopie vergt. Goed gedaan: retry met backoff op 429 en `TimeoutError` in `baseline-provider.js`, en een allowlist van veilige foutmeldingen in `consent-baseline-import.mjs` zoals de preflight die al heeft. Klaar als: tests voor backoff en allowlist, geen adressen of bodies in stderr.
 
 ### 5. Brevo-productiegebruik mist nog geverifieerd bevestigingsbewijs en consumerkoppelingen
 
@@ -32,6 +36,7 @@ Klaar als: providerroute en clicktrackingbesluit in `done/decisions.md`, geautor
 
 ## Recently done
 
+- 2026-10-21, PR #9: Brevo-baseline op productie geleverd (lijst 20, 2.163 writes, read-back schoon, 0 mail in venster; idempotentie zie rapport); diff-akkoord en churn-marge in `done/decisions.md`; migratiebriefings van 8 en 19 oktober met bewijs gesloten; lijst-ID en delta 28 oktober naar ciiic-nieuwsbrief. #7 naar `done/register.md`. Timeout-fix in `consent-preflight.mjs`.
 - 2026-10-19, PR #8 (`ce23937`): importtool onafhankelijk gereviewd, drie guards hersteld; 70 tests groen. Codegereed, TODO #7 blijft open voor akkoord en productie-import.
 - 2026-10-19, PR #7 (`e32df11`): Brevo-grondslagbesluit, definitieve dry-run en RBL-logmeting gereviewd; RBL-briefing geleverd. TODO #7/#6 blijven open; importtool gebrieft.
 - 2026-10-15 — suppressieboekhouding editiecontract: `byLanguage`-tellers, `removedByAutomator`, suppressies overleven een snapshotverversing; afspraak in runbook § Editiecontract punt 5. Briefing beantwoord en gesloten.
