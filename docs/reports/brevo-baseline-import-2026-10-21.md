@@ -16,7 +16,7 @@ Waarom een nieuwe dry-run nodig was: tussen 19 en 21 oktober kwamen er 2 abonnee
 | Read-back doellijst | `verified: true`; missingMembership 0, extraMembership 0, languageMismatch 0, firstNameMismatch 0, lastNameMismatch 0, missingSuppression 0, duplicateProviderIdentity 0, unexpectedSuppression 0, lostExistingBlock 0; verwacht 2.163 leden en 464 suppressies |
 | Steekproef | 10 contacten afzonderlijk teruggelezen, alle gelijk aan het plan |
 | Lijststand Brevo na afloop | lijst 20: 2.163 subscribers, 0 blacklisted op de lijst; 2.163 via `/contacts?listIds=20`; account 2.166 contacten (3 bestaande + 2.163) |
-| Idempotentie | zie onder |
+| Idempotentie | tweede `--apply` met hetzelfde plan (T0 11:01:06Z) na deploy van PR #9: `writes: 0`, read-back opnieuw `verified: true`, steekproef 10 |
 | SMTP-eventlog venster 11:01Z tot afsluiting | 3 pagina's volledig gepagineerd, 214 events gelezen, 0 in het venster; 0 requests/delivered/sent |
 | Marketing | 4 campagnes, alle `draft` (testconcepten van 6 oktober op testlijst 3), 0 verzonden in het venster; 0 webhooks; 0 sms-campagnes |
 | SMTP-events eerder op de dag | 4 transactionele mails (IX Labs-registratie, ander systeem) om 08:53Z, 09:25Z en 10:26Z, alle vóór het venster |
@@ -45,4 +45,6 @@ Idempotentie: een tweede `--apply` met hetzelfde goedgekeurde plan strandde eers
 
 ## Idempotentie
 
-_(wordt ingevuld na de herhaalde run met de uitgerolde backoff)_
+Na de merge van PR #9 (backoff op 429 en timeouts voor GETs) is `scripts/consent-baseline-import.mjs --apply` met exact hetzelfde goedgekeurde plan opnieuw gedraaid in de nieuwe container (`…-115557291206`), om 11:58Z tot 12:08Z. Uitkomst: `writes: 0`, `readback.verified: true` met alle negen tellers 0, `sampleCount: 10`, zelfde `releaseBlocked`-tekst (de tool geeft nooit zelf vrij). De eerdere pogingen vóór de merge strandden op Mailchimp-timeouts (60s-versie in de container) en een Brevo 429 bij het per-contact teruglezen, telkens zonder writes.
+
+Eindcontrole eventlog om 12:09Z over het venster vanaf 11:01Z, dus inclusief baseline en idempotentierun: SMTP 0 events in het venster (3 pagina's, 214 events gelezen), 0 verzonden campagnes, 0 webhooks. Daarmee is de baseline-levering compleet; wat overblijft is de delta van 28 oktober (TODO #9).

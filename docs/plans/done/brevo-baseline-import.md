@@ -4,7 +4,7 @@ Tier: `flagship-review` (migratie van opgeslagen persoonsgegevens). Uitvoer: wor
 
 ## Stand na productie-import 21 oktober
 
-Baseline uitgevoerd op 21 oktober: lijst `CIIIC nieuwsbrief` ID 20, 2.163 writes, read-back schoon, steekproef tien, 0 mail in het venster; [bewijs](../../reports/brevo-baseline-import-2026-10-21.md). Open blijven: de delta-ronde (TODO #9) en backoff/foutmeldingen (TODO #10). Deze brief gaat naar `done/` zodra de idempotentie in het rapport staat.
+Baseline uitgevoerd op 21 oktober: lijst `CIIIC nieuwsbrief` ID 20, 2.163 writes, read-back schoon, steekproef tien, 0 mail in het venster; [bewijs](../../reports/brevo-baseline-import-2026-10-21.md). Open blijven: de delta-ronde (TODO #9) en backoff/foutmeldingen (TODO #10). Idempotentie bewezen op 21 oktober; brief afgerond.
 
 ## Stand na codereview 19 oktober
 
