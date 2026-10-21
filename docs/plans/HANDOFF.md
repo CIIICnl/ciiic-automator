@@ -1,21 +1,24 @@
-# Uitvoersessie: delta-importtool bouwen volgens brief `brevo-delta-import.md`
+# Review-en-merge-sessie: PR #10 Brevo-delta-import
 
-Rol: uitvoer. Tier van het item: `flagship-review` (TODO #9); de PR wacht op review-en-merge door het flagship.
+Rol: stuur. Tier van het item: `flagship-review` (TODO #9), dus het flagship reviewt en merget.
 
-## Stand bij vertrek (21 oktober)
+## Stand bij vertrek (21 oktober, avond)
 
-De Brevo-baseline is op productie geleverd: lijst `CIIIC nieuwsbrief` ID 20, 2.163 writes na 464 suppressies, read-back schoon, steekproef tien, geen mail in het venster. PR [#9](https://github.com/CIIICnl/ciiic-automator/pull/9) (merge `e064f46`) bevat bewijs, besluit, timeout-fix in de preflight en 429-backoff in de provider; 73 tests groen, Coolify uitgerold (container `…-115557291206`). Idempotentie: zie de sectie onderaan [het rapport](../reports/brevo-baseline-import-2026-10-21.md). Beide migratiebriefings (8 en 19 oktober) zijn met bewijs gesloten; de briefing met lijst-ID 20 en delta 28 oktober staat bij ciiic-nieuwsbrief. CIIIC-KB `applications/relaybot.md` bijgewerkt.
+PR [#10](https://github.com/CIIICnl/ciiic-automator/pull/10) bouwt de delta-tool volgens [briefs/brevo-delta-import.md](briefs/brevo-delta-import.md): `scripts/consent-delta-import.mjs` met `dry-run`, `go-no-go`, `apply` en `event-log`, kern in `src/services/consent/delta-import.js`, kleine exports in `baseline-import.js` (gedrag gelijk), runbook-subparagraaf "Delta na de baseline". 84/84 tests groen, 11 nieuw. Nog niet op de container gedraaid. De PR-body noemt zeven ontwerpbeslissingen om te toetsen; de belangrijkste: holds (herinschrijving na suppressie, quarantaineredenen) blokkeren de delta niet maar worden geteld, en de grondslag voor nieuwe adds komt uit `consentPolicy` van het baselinerecord.
 
-Jaap bevestigde: go/no-go maandag 26 oktober, delta woensdag 28 oktober, eerste send donderdag 29 oktober. Writers blijven tot na 29 oktober Mailchimp.
+Planning (door Jaap bevestigd): review uiterlijk zondag 25 oktober, go/no-go maandag 26 oktober, delta woensdag 28 oktober, eerste send donderdag 29 oktober.
 
 ## Opdracht
 
-1. Bouw de delta-tool volgens [briefs/brevo-delta-import.md](briefs/brevo-delta-import.md): delta-dry-run, zelfde poorten als de baseline, suppressies eerst, hervatbaar register, volledige read-back, go/no-go-subcommando. Hergebruik `baseline-import.js`, `baseline-provider.js` (`brevoRequest`) en `migration.js`; geen echte providerwrites in tests.
-2. Open een PR met de tests uit de brief en een korte uitlegsectie in het runbook (`docs/reference/ciiic-consent-preparation.md` § Baseline-import en rollback, nieuwe subparagraaf Delta). Merge niet zelf.
-3. Haal je de review-deadline van zondag 25 oktober niet, meld dat direct aan Jaap met een voorstel.
-4. Overschrijf deze handoff met de PR-link als review-en-merge-opdracht (tier `flagship-review`), behoud het doorgeefblok hieronder, en neem deze overschrijfplicht weer op als laatste genummerde stap.
+1. Review PR #10 onafhankelijk tegen de brief, met nadruk op: suppressies winnen altijd en gaan eerst; geen pad waarop een bestaande blokkade of eerdere suppressie wordt opgeheven; herstart en tweede run zonder dubbele mutatie; geen adressen in stdout, stderr of het run-record. Fix wat nodig is op de branch, `npm test` groen.
+2. Merge, wacht op de Coolify-deploy (`https://bot.ciiic.nl/health`), draai `merge-housekeeping`.
+3. Controleer read-only in de container dat het baseline-record `consentPolicy` met `acceptedSources` heeft (anders weigert `resolveBase`) en draai `go-no-go` als rooktest; geen `--apply`.
+4. Haal je de review niet vóór zondag 25 oktober, meld dat direct aan Jaap met een voorstel (bijvoorbeeld de delta beperken tot suppressies).
+5. Overschrijf deze handoff met de go/no-go van 26 oktober als volgende opdracht, behoud het doorgeefblok hieronder, en neem deze overschrijfplicht weer op als laatste genummerde stap.
 
 ## Doorgeefblok: bestaande opdrachten behouden
+
+Nieuwe briefing van ciiic-nieuwsbrief (21 oktober, `tier: flagship-review`): `2026-10-21--from-ciiic-nieuwsbrief--to-ciiic-automator--consent-scope-en-eventlijst.md`. Scope per registerrecord (`newsletter`, `event:<slug>`), scope op de grootboekronde en de afmeldcallback, plus eventlijst IX Labs 18 november (alleen na Jaaps keuze). Nog niet geadopteerd; triëren als TODO-item na de delta, niet vóór 29 oktober laten concurreren met #9.
 
 TODO #10: foutmeldingen-allowlist voor de import-CLI's (workhorse, klein).
 

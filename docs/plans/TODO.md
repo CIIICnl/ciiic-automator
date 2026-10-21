@@ -4,7 +4,7 @@ Leeswijzer in het kort (volledig: skill `werkwijze`): _In progress_ is een claim
 
 ## In progress
 
-_(geen)_
+- #9 delta-tool: PR [#10](https://github.com/CIIICnl/ciiic-automator/pull/10) wacht op flagship-review (uiterlijk 25 oktober).
 
 ## Open werk
 
