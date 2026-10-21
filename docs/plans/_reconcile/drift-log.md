@@ -32,10 +32,14 @@ Documentlevering voor TODO #7 en #6; beide blijven open, dus geen gesloten TODO-
 
 Codegedeelte van TODO #7 geleverd; item blijft open voor diff-akkoord en productie-import. Claimbord leeg, uitvoerbrief bewust actief, write-up in `done/2026-10.md`; geen gesloten TODO-adres. Recently done vijf regels. Repo-hygiene schoon (0 artefacten), geen nieuwe signalen. Drempel: 0 open signalen, geen conflict, 7 merges sinds nulpunt; niet gehaald.
 
+### 2026-10-21 - PR #9 (merge `e064f46`) en PR #10 (merge `122842a`)
+
+PR #9 kreeg op 21 oktober geen eigen log-entry; nu meegeteld (TODO #7 gesloten met register + write-up, #9 en #10 geopend). PR #10 levert het codedeel van TODO #9; item blijft open tot go/no-go en delta, dus geen gesloten TODO-adres. Brief `brevo-delta-import.md` bewust actief. TODO #10 bijgewerkt (delta-CLI heeft de allowlist al). Claimbord leeg, Recently done vijf regels, repo-hygiene schoon, TODO.md 4 items / 5,4 KB. Briefing consent-scope-en-eventlijst (ciiic-nieuwsbrief, 21 okt) open en niet geraakt door deze merge. Geen `[CONFLICT]`, geen `[DONE?]`. Drempel: 0 open signalen, 9 merges sinds nulpunt; niet gehaald.
+
 ## Laatste diepe audit
 
 Nog geen. Repo aangesloten op de werkwijze op 2026-09-10 via `/workflow-init`; dat telt als nulpunt, niet als audit.
 
 ## Nudges-teller
 
-Merges sinds laatste audit: 7
+Merges sinds laatste audit: 9
