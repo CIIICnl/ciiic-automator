@@ -1,20 +1,26 @@
-# Review-en-merge-sessie: PR #10 Brevo-delta-import
+# Go/no-go-sessie 26 oktober: Brevo-delta van 28 oktober
 
-Rol: stuur. Tier van het item: `flagship-review` (TODO #9), dus het flagship reviewt en merget.
+Rol: stuur. Tier van het item: `flagship-review` (TODO #9). Dit is een beslisronde met Jaap, dus het flagship.
 
 ## Stand bij vertrek (21 oktober, avond)
 
-PR [#10](https://github.com/CIIICnl/ciiic-automator/pull/10) bouwt de delta-tool volgens [briefs/brevo-delta-import.md](briefs/brevo-delta-import.md): `scripts/consent-delta-import.mjs` met `dry-run`, `go-no-go`, `apply` en `event-log`, kern in `src/services/consent/delta-import.js`, kleine exports in `baseline-import.js` (gedrag gelijk), runbook-subparagraaf "Delta na de baseline". 84/84 tests groen, 11 nieuw. Nog niet op de container gedraaid. De PR-body noemt zeven ontwerpbeslissingen om te toetsen; de belangrijkste: holds (herinschrijving na suppressie, quarantaineredenen) blokkeren de delta niet maar worden geteld, en de grondslag voor nieuwe adds komt uit `consentPolicy` van het baselinerecord.
+PR [#10](https://github.com/CIIICnl/ciiic-automator/pull/10) is onafhankelijk gereviewd en gemerged (`122842a`, één allowlist-fix `08a105c`), gedeployed en healthy. Smoketest `go-no-go` read-only op productie om 16:12Z: `go: true`, `destination.verified: true` (alle negen tellers 0), lijst 20 met 2.163 leden, delta op dat moment 1 add (nl), 0 suppress, 0 update, 0 hold, enige waarschuwing TODO #6. Het baseline-record heeft `consentPolicy` met vier bronnen; `resolveBase` accepteert hem. Housekeeping gedaan (`e906349`), drift-log 9 merges, geen open signalen.
 
-Planning (door Jaap bevestigd): review uiterlijk zondag 25 oktober, go/no-go maandag 26 oktober, delta woensdag 28 oktober, eerste send donderdag 29 oktober.
+Hoe de smoketest draaide (herbruikbaar, de sleutel via stdin, nooit in env of git):
 
-## Opdracht
+```sh
+op item get "CIIIC consent export key (migratie-dry-run)" --vault CIIIC --fields password --reveal | ssh root@51.15.131.87 'c=$(docker ps --filter name=m7z1z547ie42j0d60fy0tvxx --format "{{.Names}}" | head -1); docker exec -i "$c" sh -c "read K; export CONSENT_EXPORT_KEY=\$K; cd /app; node scripts/consent-delta-import.mjs go-no-go --base-run /data/consent/migration/2026-10-21T11-01-06-771Z-dryrun.json --automation-evidence /data/consent/migration/2026-10-21T11-01-06-771Z-automations.json"'
+```
 
-1. Review PR #10 onafhankelijk tegen de brief, met nadruk op: suppressies winnen altijd en gaan eerst; geen pad waarop een bestaande blokkade of eerdere suppressie wordt opgeheven; herstart en tweede run zonder dubbele mutatie; geen adressen in stdout, stderr of het run-record. Fix wat nodig is op de branch, `npm test` groen.
-2. Merge, wacht op de Coolify-deploy (`https://bot.ciiic.nl/health`), draai `merge-housekeeping`.
-3. Controleer read-only in de container dat het baseline-record `consentPolicy` met `acceptedSources` heeft (anders weigert `resolveBase`) en draai `go-no-go` als rooktest; geen `--apply`.
-4. Haal je de review niet vóór zondag 25 oktober, meld dat direct aan Jaap met een voorstel (bijvoorbeeld de delta beperken tot suppressies).
-5. Overschrijf deze handoff met de go/no-go van 26 oktober als volgende opdracht, behoud het doorgeefblok hieronder, en neem deze overschrijfplicht weer op als laatste genummerde stap.
+Planning (door Jaap bevestigd): go/no-go maandag 26 oktober, delta woensdag 28 oktober, eerste send donderdag 29 oktober.
+
+## Opdracht (maandag 26 oktober)
+
+1. Draai `go-no-go` opnieuw op productie (commando hierboven). Het attest van 21 oktober is dan 5 dagen oud en wordt een blokkade bij `--max-age-days 3`; vraag Jaap of hij de Automations-pagina opnieuw bevestigt en schrijf dan een nieuw `<T>-automations.json` (0600, zelfde velden als het attest van 21 oktober: `checkedBy`, `checkedAt`, `listName`, `scope: account-and-list`, drie `*Disabled: true`) in `/data/consent/migration`.
+2. Schrijf het rapport `docs/reports/brevo-go-no-go-2026-10-26.md`: uitkomst, delta-diff, lijststand, waarschuwingen, en de stand van TODO #6 (RBL): Jaap weegt of de send van 29 oktober doorgaat zonder bewezen mailbox.org-bezorging.
+3. Leg Jaaps go/no-go vast in `done/decisions.md`. Bij go: de volgende handoff is de uitvoersessie van woensdag 28 oktober (rol stuur, flagship: dry-run, akkoordbestand `<T1>-delta-approval.json` met `t0`, `baselineT0`, `snapshotPath`, `runSha256`, `approvedBy: "Jaap"`, `approvedAt`; nieuw attest ná het akkoord; `apply` zonder en mét `--apply`; `event-log`; rapport; terugmelding T1 naar ciiic-nieuwsbrief via briefing). Bij no-go: voorstel delta beperken tot suppressies of datum schuiven, met Jaap.
+4. Bekend gedrag om te melden als het zich voordoet: een Brevo-blacklist op een adres in lijst 20 (bijvoorbeeld een IX Labs-bounce op hetzelfde account) telt als `unexpectedSuppression` en maakt `destination.verified` false; dan weigert `apply` de hele delta. Zie je dat op 26 oktober, bespreek met Jaap of dat adres eerst handmatig uit lijst 20 gaat.
+5. Overschrijf deze handoff met de opdracht voor 28 oktober (of de no-go-route), behoud het doorgeefblok hieronder, en neem deze overschrijfplicht weer op als laatste genummerde stap.
 
 ## Doorgeefblok: bestaande opdrachten behouden
 
