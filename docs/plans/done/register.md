@@ -11,3 +11,4 @@ Eén regel per gesloten nummer: wat het was, wanneer, en waar de write-up staat.
 | 2 | De uitgezette Radar-bronnen beslissen | 2026-10-08 | `done/2026-10.md` + `done/decisions.md` (PR #4, merge `d098761`; Springer/Nature aan via Coolify-env, drie bronnen uit de code) |
 | 8 | Editiecontract met ciiic-nieuwsbrief | 2026-10-11 | `done/2026-10.md` (PR #6, merge `fe9f3ea`; snapshot + Brevo-receipts + suppressieroute b, inert tot activatie #5; briefing gesloten, terugmelding gepubliceerd) |
 | 7 | Brevo-baseline wacht op diff-akkoord en productie-import | 2026-10-21 | `done/2026-10.md` + `done/decisions.md` + `../reports/brevo-baseline-import-2026-10-21.md` (PR #9; lijst 20, 2.163 writes, read-back schoon, 0 mail; vervolg: delta #9) |
+| 11 | Consentscopes in register, ledger en Brevo-callback (contract v2) | 2026-10-29 | `done/2026-10.md` + `../reference/consent-scope-contract.md` (PR #11, merge `94e7463`; flagship-review op `ef05ec3`, briefing AUT-11 gesloten) |

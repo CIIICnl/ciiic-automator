@@ -36,6 +36,10 @@ Codegedeelte van TODO #7 geleverd; item blijft open voor diff-akkoord en product
 
 PR #9 kreeg op 21 oktober geen eigen log-entry; nu meegeteld (TODO #7 gesloten met register + write-up, #9 en #10 geopend). PR #10 levert het codedeel van TODO #9; item blijft open tot go/no-go en delta, dus geen gesloten TODO-adres. Brief `brevo-delta-import.md` bewust actief. TODO #10 bijgewerkt (delta-CLI heeft de allowlist al). Claimbord leeg, Recently done vijf regels, repo-hygiene schoon, TODO.md 4 items / 5,4 KB. Briefing consent-scope-en-eventlijst (ciiic-nieuwsbrief, 21 okt) open en niet geraakt door deze merge. Geen `[CONFLICT]`, geen `[DONE?]`. Drempel: 0 open signalen, 9 merges sinds nulpunt; niet gehaald.
 
+### 2026-10-29 - PR #11 (merge `94e7463`)
+
+clean. TODO #11 gesloten (Recently done, register, write-up `done/2026-10.md`); merge vastgepind op de flagship-goedgekeurde SHA `ef05ec3`, deploy via webhook bevestigd. Briefing AUT-11 met bewijs geleverd, terugmelding `consent-scope-live` naar ciiic-nieuwsbrief gepubliceerd. Drie niet-blokkerende reviewpunten bewust zonder item (zie write-up). Claimbord leeg, Recently done vijf regels, repo-hygiene schoon, TODO.md 4 items / 5,5 KB. Drempel: 0 open signalen, geen conflict, 8 log-entries sinds nulpunt; niet gehaald.
+
 ## Laatste diepe audit
 
 Nog geen. Repo aangesloten op de werkwijze op 2026-09-10 via `/workflow-init`; dat telt als nulpunt, niet als audit.

@@ -1,21 +1,22 @@
-# Merge-sessie PR #11 (consentscopes, contract v2), tier `flagship-review`, goedgekeurd door het flagship
+# Go/no-go maandag 9 november (beslisronde, TODO #9, tier `flagship-review`)
 
-Rol: stuur. Het flagship heeft PR [#11](https://github.com/CIIICnl/ciiic-automator/pull/11) op 29 oktober goedgekeurd; deze sessie merget de goedgekeurde SHA en levert de briefing. Model volgens `model-mode name-for merge`.
+Rol: stuur. Beslisronde met Jaap over de eerste Brevo-send van donderdag 12 november: go/no-go read-only draaien, rapport en besluit vastleggen. Model volgens `model-mode name-for beslisronde flagship-review`.
 
 ## Stand bij vertrek (29 oktober, avond)
 
-- Go/no-go van 29 oktober gedraaid: `go: false` alleen door het Automations-attest van 21 oktober (8 dagen oud), `destination.verified: true`, lijst 20 op 2.163, delta 9 adds (nl), 9 suppressies (6 unsubscribed, 3 cleaned), 1 update, 0 hold. Rapport: `docs/reports/brevo-go-no-go-2026-10-29.md`. Geen delta uitgevoerd.
-- Jaap: eerste Brevo-verzending pas over twee weken. Werkdatum donderdag 12 november, go/no-go maandag 9, delta woensdag 11 november (besluit in `done/decisions.md`). ciiic-nieuwsbrief gebrieft: `2026-10-29--from-ciiic-automator--to-ciiic-nieuwsbrief--brevo-send-verschoven.md`.
-- PR #11 flagship-review: goedgekeurd op SHA `ef05ec30f7a5b1e7df586f3f7dc91e495ef82da2`, 93/93 tests, CI groen op node 20 en 22. De review staat als PR-review met state COMMENTED (GitHub weigert approve op een PR van het eigen account); ga op de reviewtekst af. Niets blokkerend; drie niet-blokkerende opmerkingen in de review. Briefing AUT-11 is geadopteerd op TODO #11.
-- De permissieclassifier weigert productie-reads (ssh naar de relaybot-container) vanuit de agent. Jaap draait zulke commando's zelf met `! bash <script>`; het script van vandaag staat in de sessie-scratchpad, het commando zelf in het doorgeefblok hieronder.
+- PR #11 (consentscopes, contract v2) gemerged als `94e7463` op de flagship-goedgekeurde SHA `ef05ec3`; Coolify-deploy finished, `/health` healthy. TODO #11 dicht, briefing AUT-11 met bewijs geleverd, terugmelding `2026-10-29--from-ciiic-automator--to-ciiic-nieuwsbrief--consent-scope-live.md` gepubliceerd (eventmails altijd via de snapshot).
+- Go/no-go van 29 oktober: `go: false` alleen door het attest van 21 oktober; delta 9 adds, 9 suppressies, 1 update, 0 hold. Rapport `docs/reports/brevo-go-no-go-2026-10-29.md`.
+- De permissieclassifier weigert productie-reads (ssh naar de relaybot-container) vanuit de agent: Jaap draait het commando uit het doorgeefblok zelf met `! bash <script>` of plakt het.
+- Coolify-API werkt via `ciiic-env` met `$COOLIFY_URL/deployments/applications/m7z1z547ie42j0d60fy0tvxx?take=2` (`COOLIFY_URL` bevat al `/api/v1`).
 
 ## Opdracht
 
-1. Controleer dat `ef05ec30f7a5b1e7df586f3f7dc91e495ef82da2` nog de head van `feat/consent-scope` is (`gh pr view 11 --json headRefOid`). Nieuwe commits erbovenop: niet mergen, terug naar een flagship-review.
-2. Merge PR #11 (squash of merge volgens de repogewoonte, zie `git log --merges`), wacht op de Coolify-deploy en bevestig `https://bot.ciiic.nl/health` met de nieuwe commit. Deploy vóór de delta van 11 november is in orde: de migratietools lezen geen registerrecords en scopes raken geen checksum (reviewbevinding).
-3. `merge-housekeeping`: branch opruimen, TODO #11 naar Recently done en `done/register.md`, drift-log bijwerken.
-4. Sluit briefing `2026-10-21--from-ciiic-nieuwsbrief--to-ciiic-automator--consent-scope-en-eventlijst.md` met bewijs (`briefings.sh evidence` + `close --outcome delivered`), getoetst aan de "Done when" in de briefing; punt 2 (IX Labs-eventlijst) is op 21 oktober vervallen door Jaaps keuze, zeg dat in het bewijs. Neem in het bewijs op dat eventmails altijd via de snapshot moeten lopen (reviewopmerking 2), zodat ciiic-nieuwsbrief dat meeneemt in brief 49 stap 4.
-5. Overschrijf deze handoff met de go/no-go-sessie van maandag 9 november (rol stuur, tier `flagship-review`, beslisronde met Jaap; procedure in het doorgeefblok), behoud het doorgeefblok en de terugkeer-check, en neem deze overschrijfplicht weer op als laatste genummerde stap.
+1. Vraag Jaap eerst naar de terugkeer-check (AUT-12: is 12 november de senddatum?). Andere datum: schuif go/no-go en delta mee, corrigeer `done/decisions.md` en brief ciiic-nieuwsbrief.
+2. Laat Jaap de Automations-pagina in Brevo opnieuw bevestigen en zet een vers attest `<T>-automations.json` (0600, velden als in het doorgeefblok) in `/data/consent/migration`; via een script dat Jaap zelf draait.
+3. Laat Jaap het go/no-go-commando uit het doorgeefblok draaien met `--automation-evidence` naar het nieuwe attest. Lees de uitkomst: `go`, `destination.verified`, delta-aantallen, holds, `unexpectedSuppression`. Bij een blacklist op een lid van lijst 20: adres eerst handmatig uit lijst 20, dan opnieuw.
+4. Neem TODO #6 (bezorging mailbox.org) mee in het oordeel: is er mandaat voor supportbericht of hertest, en is herstel bewezen? Zo niet, zeg expliciet wat dat betekent voor mailbox.org-ontvangers op 12 november.
+5. Schrijf `docs/reports/brevo-go-no-go-2026-11-09.md` en het besluit in `done/decisions.md`; werk TODO #9 bij. Op een branch, gemerged naar main (docs-only).
+6. Overschrijf deze handoff met de delta-sessie van woensdag 11 november (rol stuur, tier `flagship-review`; procedure in het doorgeefblok), behoud doorgeefblok en terugkeer-check, en neem deze overschrijfplicht weer op als laatste genummerde stap.
 
 ## Terugkeer-check
 
@@ -29,7 +30,7 @@ Rol: stuur. Het flagship heeft PR [#11](https://github.com/CIIICnl/ciiic-automat
 op item get "CIIIC consent export key (migratie-dry-run)" --vault CIIIC --fields password --reveal | ssh root@51.15.131.87 'c=$(docker ps --filter name=m7z1z547ie42j0d60fy0tvxx --format "{{.Names}}" | head -1); docker exec -i "$c" sh -c "read K; export CONSENT_EXPORT_KEY=\$K; cd /app; node scripts/consent-delta-import.mjs go-no-go --base-run /data/consent/migration/2026-10-21T11-01-06-771Z-dryrun.json --automation-evidence /data/consent/migration/2026-10-21T11-01-06-771Z-automations.json"'
 ```
 
-Het attest van 21 oktober blokkeert bij `--max-age-days 3`: Jaap bevestigt de Automations-pagina opnieuw, dan een nieuw `<T>-automations.json` (0600, zelfde velden: `checkedBy`, `checkedAt`, `listName`, `scope: account-and-list`, drie `*Disabled: true`) in `/data/consent/migration`. Rapport `docs/reports/brevo-go-no-go-2026-11-09.md`, besluit in `done/decisions.md`. Bekend gedrag: een Brevo-blacklist op een lid van lijst 20 telt als `unexpectedSuppression` en zet `destination.verified` op false; dan weigert `apply` de hele delta en moet dat adres eerst handmatig uit lijst 20. Delta woensdag 11 november (rol stuur, flagship): dry-run, akkoordbestand `<T1>-delta-approval.json` met `t0`, `baselineT0`, `snapshotPath`, `runSha256`, `approvedBy: "Jaap"`, `approvedAt`; nieuw attest ná het akkoord; `apply` zonder en mét `--apply`; `event-log`; rapport; terugmelding T1 naar ciiic-nieuwsbrief via briefing. Stand 29 oktober: delta 9/9/1, binnen de churn-marge van 21 oktober; de delta vraagt toch een eigen akkoord op het concrete diff.
+Het attest van 21 oktober blokkeert bij `--max-age-days 3`: Jaap bevestigt de Automations-pagina opnieuw, dan een nieuw `<T>-automations.json` (0600, zelfde velden: `checkedBy`, `checkedAt`, `listName`, `scope: account-and-list`, drie `*Disabled: true`) in `/data/consent/migration`. Rapport `docs/reports/brevo-go-no-go-2026-11-09.md`, besluit in `done/decisions.md`. Bekend gedrag: een Brevo-blacklist op een lid van lijst 20 telt als `unexpectedSuppression` en zet `destination.verified` op false; dan weigert `apply` de hele delta en moet dat adres eerst handmatig uit lijst 20. Delta woensdag 11 november (rol stuur, tier `flagship-review`): dry-run, akkoordbestand `<T1>-delta-approval.json` met `t0`, `baselineT0`, `snapshotPath`, `runSha256`, `approvedBy: "Jaap"`, `approvedAt`; nieuw attest ná het akkoord; `apply` zonder en mét `--apply`; `event-log`; rapport; terugmelding T1 naar ciiic-nieuwsbrief via briefing. Stand 29 oktober: delta 9/9/1, binnen de churn-marge van 21 oktober; de delta vraagt toch een eigen akkoord op het concrete diff.
 
 TODO #10: foutmeldingen-allowlist voor de import-CLI's (workhorse, klein).
 
