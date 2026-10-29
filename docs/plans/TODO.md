@@ -16,6 +16,12 @@ Goed gedaan: een delta-run leest Mailchimp sinds T0 (nieuwe subscribed, nieuwe u
 
 Stand 21 oktober: delta-tooling gereviewd en gemerged (PR #10, `122842a`); go/no-go-smoketest op productie zie `HANDOFF.md`. Klaar als: go/no-go-check 26 oktober gedocumenteerd, delta 28 oktober uitgevoerd en teruggelezen met eventlogbewijs, nieuw T0 in het register, terugmelding naar ciiic-nieuwsbrief.
 
+### 11. Consentscopes (contract v2) wachten op flagship-review en deploy
+
+**[flagship-review]** Het register kende één globale toestemming en suppressie per adres, dus een eventlijst liep leeg in de grootboekronde en elke editie-afmelding telde als nieuwsbriefafmelding (briefing AUT-11 van ciiic-nieuwsbrief). PR [#11](https://github.com/CIIICnl/ciiic-automator/pull/11) voegt scopes toe (`newsletter`, `event:<slug>`, adresniveau `*`), `scope` op de snapshot en afmelden op de campagnescope; contract in [consent-scope-contract.md](../reference/consent-scope-contract.md), 93 tests groen.
+
+Klaar als: flagship keurt de SHA goed, een workhorse-sessie merget, `/health` op bot.ciiic.nl draait de nieuwe commit, en de briefing is met bewijs gesloten plus terugmelding aan ciiic-nieuwsbrief (brief 49 stap 4). Niet vóór de delta/send van #9 deployen als die nog loopt.
+
 ### 10. Import-CLI's drukken geen oorzaak af
 
 **[workhorse]** Bij een fout melden `consent-baseline-import.mjs` en `consent-reconcile.mjs` alleen "inspect protected register"; op 21 oktober was voor elke diagnose een aangepaste kopie nodig. Goed gedaan: een allowlist van veilige meldingen (timeout, 429, drift, attest, lock) zoals `consent-preflight.mjs` die al heeft; nooit bodies, paden met adressen of credentials. Klaar als: allowlist met test, stderr blijft adresvrij; de delta-CLI heeft er sinds PR #10 al een (`SAFE` in `consent-delta-import.mjs`), hergebruik die. (Backoff op Brevo 429/timeout voor GETs zit sinds PR #9 in `baseline-provider.js`.)
