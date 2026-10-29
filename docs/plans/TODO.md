@@ -8,19 +8,19 @@ _(leeg)_
 
 ## Open werk
 
-### 9. Brevo-delta op 28 oktober en go/no-go op 26 oktober
+### 9. Brevo-delta en go/no-go in de week van de send (werkdatum 12 november)
 
-**[flagship-review] [beslissing Jaap]** Baseline staat (21 oktober, lijst 20, 2.163 leden, 464 suppressies; [bewijs](../reports/brevo-baseline-import-2026-10-21.md)). Sindsdien schrijven Form43/feed7 en de automator nog op Mailchimp; alles wat na T0 `2026-10-21T11:01:06.771Z` binnenkomt of afmeldt moet vóór de send op 29 oktober naar lijst 20, met suppressies voorop. Jaap bevestigde delta woensdag 28 oktober en go/no-go maandag 26 oktober.
+**[flagship-review] [beslissing Jaap]** Baseline staat (21 oktober, lijst 20, 2.163 leden, 464 suppressies; [bewijs](../reports/brevo-baseline-import-2026-10-21.md)). Sindsdien schrijven Form43/feed7 en de automator nog op Mailchimp; alles wat na T0 `2026-10-21T11:01:06.771Z` binnenkomt of afmeldt moet vóór de send naar lijst 20, met suppressies voorop. Jaap besloot 29 oktober: eerste Brevo-send pas over twee weken (werkdatum donderdag 12 november; go/no-go maandag 9, delta woensdag 11 november afgeleid).
 
 Goed gedaan: een delta-run leest Mailchimp sinds T0 (nieuwe subscribed, nieuwe unsubscribed/cleaned, gewijzigde taal of naam), past alleen die mutaties toe via dezelfde registerlogica (suppressies eerst, read-back, geen mail) en legt een nieuw T0 vast. Buiten mandaat: writer-cutover, consent-route, verzending.
 
-Stand 21 oktober: delta-tooling gereviewd en gemerged (PR #10, `122842a`); go/no-go-smoketest op productie zie `HANDOFF.md`. Klaar als: go/no-go-check 26 oktober gedocumenteerd, delta 28 oktober uitgevoerd en teruggelezen met eventlogbewijs, nieuw T0 in het register, terugmelding naar ciiic-nieuwsbrief.
+Stand 29 oktober: go/no-go gedraaid ([rapport](../reports/brevo-go-no-go-2026-10-29.md)): alleen het verouderde attest blokkeert, bestemming geverifieerd, delta 9/9/1. Delta niet uitgevoerd (zou op 11 november opnieuw moeten). Klaar als: go/no-go 9 november gedocumenteerd, nieuw attest, delta 11 november uitgevoerd en teruggelezen met eventlogbewijs, nieuw T0 in het register, terugmelding naar ciiic-nieuwsbrief.
 
-### 11. Consentscopes (contract v2) wachten op flagship-review en deploy
+### 11. Consentscopes (contract v2): goedgekeurd, wacht op merge en deploy
 
-**[flagship-review]** Het register kende één globale toestemming en suppressie per adres, dus een eventlijst liep leeg in de grootboekronde en elke editie-afmelding telde als nieuwsbriefafmelding (briefing AUT-11 van ciiic-nieuwsbrief). PR [#11](https://github.com/CIIICnl/ciiic-automator/pull/11) voegt scopes toe (`newsletter`, `event:<slug>`, adresniveau `*`), `scope` op de snapshot en afmelden op de campagnescope; contract in [consent-scope-contract.md](../reference/consent-scope-contract.md), 93 tests groen.
+**[flagship-review]** Het register kende één globale toestemming en suppressie per adres, dus een eventlijst liep leeg in de grootboekronde en elke editie-afmelding telde als nieuwsbriefafmelding (briefing AUT-11 `2026-10-21--from-ciiic-nieuwsbrief--to-ciiic-automator--consent-scope-en-eventlijst` van ciiic-nieuwsbrief, geadopteerd op dit item). PR [#11](https://github.com/CIIICnl/ciiic-automator/pull/11) voegt scopes toe (`newsletter`, `event:<slug>`, adresniveau `*`), `scope` op de snapshot en afmelden op de campagnescope; contract in [consent-scope-contract.md](../reference/consent-scope-contract.md), 93 tests groen.
 
-Klaar als: flagship keurt de SHA goed, een workhorse-sessie merget, `/health` op bot.ciiic.nl draait de nieuwe commit, en de briefing is met bewijs gesloten plus terugmelding aan ciiic-nieuwsbrief (brief 49 stap 4). Niet vóór de delta/send van #9 deployen als die nog loopt.
+Stand 29 oktober: flagship-review goedgekeurd op SHA `ef05ec30f7a5b1e7df586f3f7dc91e495ef82da2` (PR-review, state COMMENTED omdat GitHub geen approve op een eigen PR toestaat). Klaar als: een workhorse-sessie merget die SHA, `/health` op bot.ciiic.nl draait de nieuwe commit, en de briefing is met bewijs gesloten plus terugmelding aan ciiic-nieuwsbrief (brief 49 stap 4; eventmails altijd via de snapshot). Deploy mag vóór de delta van 11 november.
 
 ### 10. Import-CLI's drukken geen oorzaak af
 
