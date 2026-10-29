@@ -65,7 +65,7 @@ test('snapshot registers, refreshes before freeze and reports exclusions', async
       const first = await (await snapshot(snapshotBody([
         { email: 'NL@example.test', language: 'nl' }, { email: 'en@example.test', language: 'en' },
         { email: 'off@example.test', language: 'nl' }, { email: 'stranger@example.test', language: 'nl' }]))).json();
-      assert.deepEqual({ ...first, excluded: undefined }, { editionId: EDITION, recipients: 2, nl: 1, en: 1,
+      assert.deepEqual({ ...first, excluded: undefined }, { editionId: EDITION, scope: 'newsletter', recipients: 2, nl: 1, en: 1,
         excludedConflict: 0, excludedMissingLanguage: 0, excluded: undefined, languageDiffersFromRegister: 0 });
       assert.deepEqual(first.excluded, [{ email: 'off@example.test', reason: 'suppressed' },
         { email: 'stranger@example.test', reason: 'unknown_contact' }]);

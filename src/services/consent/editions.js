@@ -1,4 +1,5 @@
 import { canonicalEmail } from './migration.js';
+import { NEWSLETTER_SCOPE, eligible, scopeStatus } from './scopes.js';
 
 function validRecipient(contact) {
   const email = canonicalEmail(contact.email);
@@ -62,13 +63,14 @@ export async function prepareEdition(store, editionId, contacts, meta = undefine
 export async function claimEditionRecipient(store, editionId, emailInput, language, provider) {
   const email = canonicalEmail(emailInput);
   if (!email || !['nl', 'en'].includes(language) || !provider) throw new Error('Invalid edition claim');
+  let scope = NEWSLETTER_SCOPE;
   const claim = await cas(store, editionId, async (current) => {
     if (!current?.assignments?.[email]) return { write: false, value: { allowed: false, reason: 'outside_snapshot' } };
     const entry = current.assignments[email];
     if (entry.language !== language) return { write: false, value: { allowed: false, reason: 'wrong_language' } };
     if (entry.outcome !== 'ready') return { write: false, value: { allowed: false, reason: entry.outcome } };
-    const consent = await store.get(email);
-    if (!consent || consent.suppressed || consent.preferenceConflict || consent.consent !== 'confirmed') {
+    scope = current.meta?.scope ?? NEWSLETTER_SCOPE;
+    if (!eligible(scopeStatus(await store.get(email), scope))) {
       const state = structuredClone(current);
       state.assignments[email].outcome = 'suppressed';
       return { state, value: { allowed: false, reason: 'current_suppression' } };
@@ -79,8 +81,7 @@ export async function claimEditionRecipient(store, editionId, emailInput, langua
     return { state, value: { allowed: true, email, language, provider } };
   });
   if (!claim.allowed) return claim;
-  const latest = await store.get(email);
-  if (latest && !latest.suppressed && !latest.preferenceConflict && latest.consent === 'confirmed') return claim;
+  if (eligible(scopeStatus(await store.get(email), scope))) return claim;
   await cas(store, editionId, async (current) => {
     const entry = current?.assignments?.[email];
     if (!entry || entry.outcome !== 'unknown' || entry.provider !== provider) {

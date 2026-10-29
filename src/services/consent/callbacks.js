@@ -3,7 +3,8 @@ import express from 'express';
 import { getConfiguredConsentStore, normalizeEmail } from './store.js';
 import { BREVO_LANGUAGE_ATTRIBUTE, createLanguageCodecLoader } from './brevo-language.js';
 import { request } from './providers.js';
-import { applyEditionSuppression, recordEditionDelivery } from './newsletter-editions.js';
+import { applyEditionSuppression, editionScope, recordEditionDelivery } from './newsletter-editions.js';
+import { ADDRESS_SCOPE, NEWSLETTER_SCOPE } from './scopes.js';
 
 // Brevo documents Bearer webhook authentication, not a native signature.
 // https://developers.brevo.com/docs/secured-webhooks
@@ -14,14 +15,25 @@ export function authorized(header, token) {
   return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
 }
 
-// `editionCampaigns` holds the Brevo campaign IDs of newsletter editions. A
-// delivery is only meaningful for those (it is the edition receipt, never a
-// DOI confirmation), and an unsubscribe from an edition campaign counts even
-// when its list_id names the edition list instead of the main CIIIC list.
+function eventTagged(body) {
+  const tags = [...(typeof body.tag === 'string' ? body.tag.split(',') : []), ...(Array.isArray(body.tags) ? body.tags : [])];
+  return tags.some(tag => typeof tag === 'string' && tag.trim().toLowerCase() === 'event');
+}
+
+// `editionCampaigns` maps the Brevo campaign IDs of editions to their consent
+// scope (a Set means all newsletter). A delivery is only meaningful for those
+// (it is the edition receipt, never a DOI confirmation), and an unsubscribe
+// from an edition campaign counts even when its list_id names the edition
+// list instead of the main CIIIC list. The unsubscribe is booked on the
+// campaign's scope: under an event mail it leaves the newsletter alone,
+// unless list_id shows the main list was left as well. Bounces, spam and
+// deletion are about the address, so they block every scope (`*`).
+// The result is one event, a list of events, or null.
 export function mapBrevoMarketingEvent(body, listId, languageCodec = null, editionCampaigns = new Set()) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Invalid webhook body');
   const event = body.event;
   const editionCampaign = editionCampaigns.has(Number(body.camp_id));
+  const campaignScope = editionCampaign ? (editionCampaigns.get?.(Number(body.camp_id)) ?? NEWSLETTER_SCOPE) : null;
   if (['delivered', 'sent'].includes(event) && !editionCampaign) return null;
   if (!['unsubscribe', 'hard_bounce', 'spam', 'contact_deleted', 'contact_updated', 'delivered', 'sent'].includes(event)) return null;
   const email = normalizeEmail(body.email);
@@ -44,10 +56,18 @@ export function mapBrevoMarketingEvent(body, listId, languageCodec = null, editi
     const fingerprint = crypto.createHash('sha256').update(JSON.stringify(body.content)).digest('hex');
     return { email, id: `${event}:${email}:${timestamp}:${fingerprint}`, type: 'preference', source: 'brevo-profile', occurredAt: new Date(timestamp * 1000).toISOString(), language };
   }
-  if (event === 'contact_deleted') return { email, id: `${event}:${email}:${timestamp}`, type: 'suppress', source: 'brevo', occurredAt: new Date(timestamp * 1000).toISOString(), reason: event };
-  if (event === 'unsubscribe' && !editionCampaign && Array.isArray(body.list_id) && !body.list_id.map(Number).includes(Number(listId))) return null;
+  if (event === 'contact_deleted') return { email, id: `${event}:${email}:${timestamp}`, type: 'suppress', source: 'brevo', occurredAt: new Date(timestamp * 1000).toISOString(), reason: event, scope: ADDRESS_SCOPE };
+  const leftMainList = Array.isArray(body.list_id) && body.list_id.map(Number).includes(Number(listId));
   const id = [event, email, timestamp, body.camp_id ?? '', ...(Array.isArray(body.list_id) ? body.list_id.map(String).sort() : [])].join(':');
-  return { email, id, type: 'suppress', source: 'brevo', occurredAt: new Date(timestamp * 1000).toISOString(), reason: event };
+  const suppression = scope => ({ email, id, type: 'suppress', source: 'brevo', occurredAt: new Date(timestamp * 1000).toISOString(), reason: event, scope });
+  if (event !== 'unsubscribe') return suppression(ADDRESS_SCOPE);
+  if (campaignScope && campaignScope !== NEWSLETTER_SCOPE) {
+    return leftMainList ? [suppression(campaignScope), suppression(NEWSLETTER_SCOPE)] : suppression(campaignScope);
+  }
+  // An event campaign the ledger does not know has no scope to book on.
+  if (!editionCampaign && eventTagged(body) && !leftMainList) return null;
+  if (!editionCampaign && Array.isArray(body.list_id) && !leftMainList) return null;
+  return suppression(NEWSLETTER_SCOPE);
 }
 
 // Brevo answers 400 when the contact is not (or no longer) in the list; that
@@ -83,8 +103,9 @@ export function createMarketingRouter({ store, token = process.env.BREVO_MARKETI
       // failure still works because applyEvent is idempotent per recipient.
       const registry = store || getConfiguredConsentStore();
       const editions = registry.listEditions ? await registry.listEditions() : [];
-      const editionCampaigns = new Set(editions.flatMap(edition => Object.values(edition.state?.meta?.campaigns ?? {})).filter(Boolean));
-      const mappedEvents = events.map(body => mapBrevoMarketingEvent(body, list, languageCodec, editionCampaigns)).filter(Boolean);
+      const editionCampaigns = new Map(editions.flatMap(edition => Object.values(edition.state?.meta?.campaigns ?? {})
+        .filter(Boolean).map(campaign => [campaign, editionScope(edition.state)])));
+      const mappedEvents = events.flatMap(body => mapBrevoMarketingEvent(body, list, languageCodec, editionCampaigns)).filter(Boolean);
       let applied = 0;
       for (const mapped of mappedEvents) {
           if (mapped.type === 'delivery') {
@@ -101,7 +122,7 @@ export function createMarketingRouter({ store, token = process.env.BREVO_MARKETI
           // Runs on duplicates too: a retry after a failed list removal must
           // still finish it (route b).
           if (mapped.type === 'suppress' && editions.length) {
-            await applyEditionSuppression(registry, mapped.email, { removeFromList, occurredAt: mapped.occurredAt });
+            await applyEditionSuppression(registry, mapped.email, { removeFromList, occurredAt: mapped.occurredAt, scope: mapped.scope });
           }
       }
       return res.json({ accepted: true, applied });

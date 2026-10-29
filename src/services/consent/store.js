@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { applyPreference } from './preferences.js';
+import { ADDRESS_SCOPE, NEWSLETTER_SCOPE, addressSuppressed, normalizeScope, unscopedSuppressionIsAddressLevel } from './scopes.js';
 
 export function normalizeEmail(value) {
   const email = String(value || '').trim().toLowerCase();
@@ -78,14 +79,41 @@ export function createConsentStore({ path: dbPath, encryptionKey, hmacKey, clock
     const occurredAt = Date.parse((event.type === 'preference-observation' ? event.observedAt : event.occurredAt) || '');
     if (!Number.isFinite(occurredAt)) throw new Error('Event time required');
     if (event.type === 'confirmed' && (!event.evidence || !['provider-confirmation', 'migration-approval'].includes(event.evidence.kind) || typeof event.evidence.reference !== 'string' || !event.evidence.reference.trim() || !['brevo-confirmation', 'mailchimp-confirmation', 'migration-approved'].includes(event.source))) throw new Error('Confirmed consent requires authoritative evidence');
-    const keyId = eventKey(`${event.source}:${event.id}:${email}`);
+    const scope = normalizeScope(event.scope, { allowAddress: event.type === 'suppress' });
+    if (scope !== NEWSLETTER_SCOPE && event.type.startsWith('preference')) throw new Error('Invalid consent event');
+    // Newsletter and address-level keys stay as before v2, so a provider
+    // retry across the deploy is still recognised as a duplicate.
+    const keyId = eventKey(scope.startsWith('event:') ? `${event.source}:${event.id}:${email}:${scope}` : `${event.source}:${event.id}:${email}`);
     if (db.prepare('SELECT 1 FROM events WHERE event_key = ?').get(keyId)) return { duplicate: true, record: get(email) };
     const prior = get(email);
     const record = prior || { identity: identity(email), email, consent: 'unknown', language: null, languageSource: null, languageAt: null, preferenceConflict: false, suppressed: false, suppressionReason: null, suppressionAt: null, updatedAt: null };
-    if (event.type === 'suppress') {
+    // Settle the legacy reading once, before a newer suppression overwrites
+    // the reason it was derived from.
+    record.addressSuppressed = addressSuppressed(record);
+    if (scope.startsWith('event:')) {
+      record.scopes = record.scopes || {};
+      const entry = record.scopes[scope] || { consent: 'unknown', suppressed: false, suppressionReason: null, suppressionAt: null };
+      if (event.type === 'suppress') {
+        entry.suppressed = true;
+        entry.suppressionReason = event.reason || event.source;
+        entry.suppressionAt = Math.max(entry.suppressionAt || 0, occurredAt);
+      } else if (event.type === 'pending') {
+        if (entry.consent === 'unknown') entry.consent = 'pending';
+      } else if (event.type === 'confirmed' && !entry.suppressed && !record.addressSuppressed) {
+        entry.consent = 'confirmed';
+        entry.consentEvidence = event.evidence;
+        entry.consentAt = occurredAt;
+        entry.source = event.source;
+      }
+      record.scopes[scope] = entry;
+    } else if (event.type === 'suppress') {
+      // Address-level also suppresses the newsletter, as every suppression
+      // did before v2.
       record.suppressed = true;
       record.suppressionReason = event.reason || event.source;
       record.suppressionAt = Math.max(record.suppressionAt || 0, occurredAt);
+      const unscoped = event.scope === undefined || event.scope === null || event.scope === '';
+      if (scope === ADDRESS_SCOPE || (unscoped && unscopedSuppressionIsAddressLevel(record.suppressionReason))) record.addressSuppressed = true;
     } else if (event.type === 'preference' || event.type === 'preference-observation') {
       const language = event.type === 'preference-observation' && event.reason ? null : normalizeLanguage(event.language);
       applyPreference(record, event, language);
