@@ -16,12 +16,6 @@ Goed gedaan: een delta-run leest Mailchimp sinds T0 (nieuwe subscribed, nieuwe u
 
 Stand 29 oktober: go/no-go gedraaid ([rapport](../reports/brevo-go-no-go-2026-10-29.md)): alleen het verouderde attest blokkeert, bestemming geverifieerd, delta 9/9/1. Delta niet uitgevoerd (zou op 11 november opnieuw moeten). Klaar als: go/no-go 9 november gedocumenteerd, nieuw attest, delta 11 november uitgevoerd en teruggelezen met eventlogbewijs, nieuw T0 in het register, terugmelding naar ciiic-nieuwsbrief.
 
-### 11. Consentscopes (contract v2): goedgekeurd, wacht op merge en deploy
-
-**[flagship-review]** Het register kende één globale toestemming en suppressie per adres, dus een eventlijst liep leeg in de grootboekronde en elke editie-afmelding telde als nieuwsbriefafmelding (briefing AUT-11 `2026-10-21--from-ciiic-nieuwsbrief--to-ciiic-automator--consent-scope-en-eventlijst` van ciiic-nieuwsbrief, geadopteerd op dit item). PR [#11](https://github.com/CIIICnl/ciiic-automator/pull/11) voegt scopes toe (`newsletter`, `event:<slug>`, adresniveau `*`), `scope` op de snapshot en afmelden op de campagnescope; contract in [consent-scope-contract.md](../reference/consent-scope-contract.md), 93 tests groen.
-
-Stand 29 oktober: flagship-review goedgekeurd op SHA `ef05ec30f7a5b1e7df586f3f7dc91e495ef82da2` (PR-review, state COMMENTED omdat GitHub geen approve op een eigen PR toestaat). Klaar als: een workhorse-sessie merget die SHA, `/health` op bot.ciiic.nl draait de nieuwe commit, en de briefing is met bewijs gesloten plus terugmelding aan ciiic-nieuwsbrief (brief 49 stap 4; eventmails altijd via de snapshot). Deploy mag vóór de delta van 11 november.
-
 ### 10. Import-CLI's drukken geen oorzaak af
 
 **[workhorse]** Bij een fout melden `consent-baseline-import.mjs` en `consent-reconcile.mjs` alleen "inspect protected register"; op 21 oktober was voor elke diagnose een aangepaste kopie nodig. Goed gedaan: een allowlist van veilige meldingen (timeout, 429, drift, attest, lock) zoals `consent-preflight.mjs` die al heeft; nooit bodies, paden met adressen of credentials. Klaar als: allowlist met test, stderr blijft adresvrij; de delta-CLI heeft er sinds PR #10 al een (`SAFE` in `consent-delta-import.mjs`), hergebruik die. (Backoff op Brevo 429/timeout voor GETs zit sinds PR #9 in `baseline-provider.js`.)
@@ -42,8 +36,8 @@ Klaar als: providerroute en clicktrackingbesluit in `done/decisions.md`, geautor
 
 ## Recently done
 
+- 2026-10-29, PR #11 (`94e7463`): consentscopes (contract v2: `newsletter`, `event:<slug>`, adresniveau `*`) na flagship-review op `ef05ec3` gemerged en gedeployed; briefing AUT-11 met bewijs gesloten. 93 tests groen.
 - 2026-10-21, PR #10 (`122842a`): Brevo-delta-tool (`consent-delta-import.mjs`: dry-run, go-no-go, apply, event-log) onafhankelijk gereviewd en gemerged; één allowlist-fix. 84 tests groen. #9 blijft open tot go/no-go 26 oktober en delta 28 oktober.
 - 2026-10-21, PR #9: Brevo-baseline op productie geleverd (lijst 20, 2.163 writes, read-back schoon, 0 mail in venster; idempotentie zie rapport); diff-akkoord en churn-marge in `done/decisions.md`; migratiebriefings van 8 en 19 oktober met bewijs gesloten; lijst-ID en delta 28 oktober naar ciiic-nieuwsbrief. #7 naar `done/register.md`. Timeout-fix in `consent-preflight.mjs`.
 - 2026-10-19, PR #8 (`ce23937`): importtool onafhankelijk gereviewd, drie guards hersteld; 70 tests groen. Codegereed, TODO #7 blijft open voor akkoord en productie-import.
 - 2026-10-19, PR #7 (`e32df11`): Brevo-grondslagbesluit, definitieve dry-run en RBL-logmeting gereviewd; RBL-briefing geleverd. TODO #7/#6 blijven open; importtool gebrieft.
-- 2026-10-15 — suppressieboekhouding editiecontract: `byLanguage`-tellers, `removedByAutomator`, suppressies overleven een snapshotverversing; afspraak in runbook § Editiecontract punt 5. Briefing beantwoord en gesloten.
