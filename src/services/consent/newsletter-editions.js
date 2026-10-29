@@ -7,6 +7,7 @@
 // § Editiecontract met nieuwsbrief.
 import { canonicalEmail } from './migration.js';
 import { editionSummary, prepareEdition } from './editions.js';
+import { ADDRESS_SCOPE, NEWSLETTER_SCOPE, exclusionReason, normalizeScope, scopeStatus } from './scopes.js';
 
 const LANGUAGES = ['nl', 'en'];
 // A frozen edition with recipients still `ready` and no Brevo event for this
@@ -39,6 +40,7 @@ function perLanguageIds(value, label, { required }) {
 export function validateSnapshot(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Invalid snapshot body');
   if (typeof body.documentId !== 'string' || !body.documentId.trim() || body.documentId.length > 200) throw new Error('Invalid documentId');
+  const scope = normalizeScope(body.scope);
   const campaigns = perLanguageIds(body.campaigns, 'campaigns', { required: false });
   const lists = perLanguageIds(body.lists, 'lists', { required: false });
   for (const language of LANGUAGES) {
@@ -52,7 +54,12 @@ export function validateSnapshot(body) {
     if (campaigns[row.language] === null) throw new Error('Recipient language has no campaign');
     return { email, language: row.language };
   });
-  return { documentId: body.documentId.trim(), campaigns, lists, recipients };
+  return { documentId: body.documentId.trim(), scope, campaigns, lists, recipients };
+}
+
+// Editions registered before v2 have no scope and were newsletters.
+export function editionScope(state) {
+  return state?.meta?.scope ?? NEWSLETTER_SCOPE;
 }
 
 async function allEditions(store) {
@@ -66,7 +73,7 @@ export async function findEditionByCampaign(store, campaignId) {
   for (const edition of await allEditions(store)) {
     const campaigns = edition.state?.meta?.campaigns ?? {};
     const language = LANGUAGES.find((lang) => campaigns[lang] === id);
-    if (language) return { editionId: edition.editionId, language, meta: edition.state.meta };
+    if (language) return { editionId: edition.editionId, language, scope: editionScope(edition.state), meta: edition.state.meta };
   }
   return null;
 }
@@ -86,6 +93,7 @@ export async function registerSnapshot(store, editionId, body, { now = () => Dat
     }
   }
   const existing = await store.getEdition(editionId);
+  if (existing && editionScope(existing.state) !== snapshot.scope) throw new Error('Invalid scope change');
   if (existing?.state?.frozen) {
     const error = new Error('Edition is frozen after first provider attempt');
     error.code = 'FROZEN';
@@ -96,22 +104,18 @@ export async function registerSnapshot(store, editionId, body, { now = () => Dat
   const contacts = [];
   for (const recipient of snapshot.recipients) {
     const record = await store.get(recipient.email);
-    let reason = null;
-    if (!record) reason = 'unknown_contact';
-    else if (record.suppressed) reason = 'suppressed';
-    else if (record.consent !== 'confirmed') reason = 'consent_not_confirmed';
-    else if (record.preferenceConflict) reason = 'preference_conflict';
+    const reason = exclusionReason(scopeStatus(record, snapshot.scope));
     if (reason) { excluded.push({ email: recipient.email, reason }); continue; }
     if (record.language && record.language !== recipient.language) languageDiffersFromRegister += 1;
     contacts.push({ email: recipient.email, language: recipient.language, consent: 'confirmed' });
   }
   // Suppression times carry over a refresh, like the suppressed entries do.
   const previous = existing?.state?.meta ?? {};
-  const meta = { documentId: snapshot.documentId, campaigns: snapshot.campaigns, lists: snapshot.lists,
+  const meta = { documentId: snapshot.documentId, scope: snapshot.scope, campaigns: snapshot.campaigns, lists: snapshot.lists,
     snapshotAt: new Date(now()).toISOString(), lastEventAt: null, lastSuppressionAt: previous.lastSuppressionAt ?? null,
     lastSuppressionAtByLanguage: { nl: null, en: null, ...previous.lastSuppressionAtByLanguage }, anomalies: {} };
   const counts = await prepareEdition(store, editionId, contacts, meta);
-  return { ...counts, excluded, languageDiffersFromRegister };
+  return { ...counts, scope: snapshot.scope, excluded, languageDiffersFromRegister };
 }
 
 async function updateEdition(store, editionId, change) {
@@ -159,17 +163,19 @@ export async function recordEditionDelivery(store, { campaignId, email: rawEmail
 
 /**
  * Suppression route (b): the automator owns the Brevo account, so it removes
- * a suppressed contact from every edition list where it is still `ready`.
+ * a suppressed contact from every edition list of the same scope where it is
+ * still `ready`; an address-level suppression (`*`) reaches every scope.
  * The entry flips to `suppressed` only after Brevo accepted the removal; a
  * failure throws, so the webhook answers 503 and Brevo retries.
  */
-export async function applyEditionSuppression(store, rawEmail, { removeFromList, occurredAt }) {
+export async function applyEditionSuppression(store, rawEmail, { removeFromList, occurredAt, scope = NEWSLETTER_SCOPE }) {
   const email = canonicalEmail(rawEmail);
   if (!email) return 0;
   let removed = 0;
   for (const edition of await allEditions(store)) {
     const entry = edition.state?.assignments?.[email];
     if (!entry || entry.outcome !== 'ready') continue;
+    if (scope !== ADDRESS_SCOPE && editionScope(edition.state) !== scope) continue;
     const listId = edition.state.meta?.lists?.[entry.language];
     // true = Brevo removed it, false = it was no longer in the list (the
     // newsletter got there first). Only the first counts as our removal.
@@ -203,7 +209,7 @@ export async function editionStatus(store, editionId, { now = () => Date.now() }
   for (const language of LANGUAGES) {
     summary.byLanguage[language].lastSuppressionAt = meta.lastSuppressionAtByLanguage?.[language] ?? null;
   }
-  return { ...summary, documentId: meta.documentId ?? null, campaigns: meta.campaigns ?? null,
+  return { ...summary, documentId: meta.documentId ?? null, scope: editionScope(edition.state), campaigns: meta.campaigns ?? null,
     snapshotAt: meta.snapshotAt ?? null, lastEventAt: meta.lastEventAt ?? null,
     lastSuppressionAt: meta.lastSuppressionAt ?? null, anomalies: meta.anomalies ?? {}, uncertain };
 }
