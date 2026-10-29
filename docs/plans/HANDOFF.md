@@ -24,6 +24,9 @@ Planning (door Jaap bevestigd): go/no-go maandag 26 oktober, delta woensdag 28 o
 
 ## Doorgeefblok: bestaande opdrachten behouden
 
+**Nieuw 29 oktober: PR [#11](https://github.com/CIIICnl/ciiic-automator/pull/11), consentscopes (contract v2), wacht op flagship-review** (TODO #11, `tier: flagship-review`). Gebouwd door Opus op briefing AUT-11 (`2026-10-21--from-ciiic-nieuwsbrief--to-ciiic-automator--consent-scope-en-eventlijst.md`). Volgorde: flagship-reviewsessie keurt (reviewpunten staan in de PR-body, geen merge) → workhorse-sessie merget de goedgekeurde SHA, bevestigt `/health` op bot.ciiic.nl met de nieuwe commit, sluit de briefing met bewijs (`briefings.sh evidence` + `close --outcome delivered`) en meldt contract v2 terug aan ciiic-nieuwsbrief voor brief 49 stap 4. Deploy pas na afronding van de delta/send uit #9 als die nog loopt. Punt 2 van de briefing (IX Labs-eventlijst) is vervallen door Jaaps keuze van 21 oktober.
+
+
 Nieuwe briefing van ciiic-nieuwsbrief (21 oktober, `tier: flagship-review`): `2026-10-21--from-ciiic-nieuwsbrief--to-ciiic-automator--consent-scope-en-eventlijst.md`. Scope per registerrecord (`newsletter`, `event:<slug>`), scope op de grootboekronde en de afmeldcallback, plus eventlijst IX Labs 18 november (alleen na Jaaps keuze). Nog niet geadopteerd; triëren als TODO-item na de delta, niet vóór 29 oktober laten concurreren met #9.
 
 TODO #10: foutmeldingen-allowlist voor de import-CLI's (workhorse, klein).
